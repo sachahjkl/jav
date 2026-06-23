@@ -1,0 +1,10 @@
+id = "junit"
+name = "JUnit Test Project"
+description = "A focused JUnit 5 project for test-first Java code."
+short_name = "junit"
+aliases = ["test", "tests"]
+language = "Java"
+tags = ["Test", "JUnit"]
+default_build_tool = "maven"
+renderer = "plain-app"
+main_class = "Calculator"

@@ -48,12 +48,92 @@ fn new_console_creates_maven_project() {
         .stdout(predicate::str::contains("created"));
 
     project.child("pom.xml").assert(predicate::path::exists());
+    project.child("README.md").assert(predicate::path::exists());
+    project
+        .child(".gitignore")
+        .assert(predicate::path::exists());
+    project.child("jav.toml").assert(predicate::path::exists());
     project
         .child("src/main/java/dev/example/demo/Main.java")
         .assert(predicate::path::exists());
     project
         .child("src/test/java/dev/example/demo/MainTest.java")
         .assert(predicate::path::exists());
+}
+
+#[test]
+fn new_without_template_prints_catalog() {
+    let mut command = Command::cargo_bin("jav").unwrap();
+
+    command
+        .arg("new")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Common templates"))
+        .stdout(predicate::str::contains("Spring Web API"));
+}
+
+#[test]
+fn new_list_prints_installed_templates() {
+    let mut command = Command::cargo_bin("jav").unwrap();
+
+    command
+        .args(["new", "list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Template Name"))
+        .stdout(predicate::str::contains("JUnit Test Project"));
+}
+
+#[test]
+fn new_list_verbose_prints_descriptions_and_aliases() {
+    let mut command = Command::cargo_bin("jav").unwrap();
+
+    command
+        .args(["new", "list", "--verbose"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Aliases:"))
+        .stdout(predicate::str::contains("Supported features:"));
+}
+
+#[test]
+fn new_describe_prints_template_details() {
+    let mut command = Command::cargo_bin("jav").unwrap();
+
+    command
+        .args(["new", "webapi", "--describe"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Spring Web API"))
+        .stdout(predicate::str::contains("Default features"));
+}
+
+#[test]
+fn new_cli_creates_command_app() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let project = temp.child("Toolbox");
+
+    let mut command = Command::cargo_bin("jav").unwrap();
+    command
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "cli",
+            "--name",
+            "Toolbox",
+            "--package",
+            "dev.example.toolbox",
+        ])
+        .assert()
+        .success();
+
+    project
+        .child("src/main/java/dev/example/toolbox/CommandApp.java")
+        .assert(predicate::path::exists());
+    let build = std::fs::read_to_string(project.child("build.gradle.kts").path()).unwrap();
+    assert!(build.contains("dev.example.toolbox.CommandApp"));
+    project.child("pom.xml").assert(predicate::path::missing());
 }
 
 #[test]
@@ -80,6 +160,7 @@ fn new_console_gradle_creates_gradle_project() {
     project
         .child("build.gradle.kts")
         .assert(predicate::path::exists());
+    project.child("jav.toml").assert(predicate::path::exists());
     project
         .child("settings.gradle.kts")
         .assert(predicate::path::exists());
@@ -111,7 +192,9 @@ fn new_springboot_creates_project_with_requested_features() {
         .assert()
         .success();
 
-    project.child("pom.xml").assert(predicate::path::exists());
+    project
+        .child("build.gradle.kts")
+        .assert(predicate::path::exists());
     project
         .child("src/main/java/dev/example/api/Application.java")
         .assert(predicate::path::exists());
@@ -119,10 +202,34 @@ fn new_springboot_creates_project_with_requested_features() {
         .child("src/main/java/dev/example/api/HelloController.java")
         .assert(predicate::path::exists());
 
-    let pom = std::fs::read_to_string(project.child("pom.xml").path()).unwrap();
-    assert!(pom.contains("spring-boot-starter-web"));
-    assert!(pom.contains("spring-boot-starter-actuator"));
-    assert!(pom.contains("spring-boot-starter-security"));
+    let build = std::fs::read_to_string(project.child("build.gradle.kts").path()).unwrap();
+    assert!(build.contains("spring-boot-starter-web"));
+    assert!(build.contains("spring-boot-starter-actuator"));
+    assert!(build.contains("spring-boot-starter-security"));
+}
+
+#[test]
+fn new_template_alias_uses_canonical_template() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let project = temp.child("ApiAlias");
+
+    let mut command = Command::cargo_bin("jav").unwrap();
+    command
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "webapi",
+            "--name",
+            "ApiAlias",
+            "--package",
+            "dev.example.alias",
+        ])
+        .assert()
+        .success();
+
+    project
+        .child("src/main/java/dev/example/alias/HelloController.java")
+        .assert(predicate::path::exists());
 }
 
 #[test]
@@ -144,7 +251,7 @@ fn new_rejects_spring_features_for_non_springboot_templates() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("only supported for the springboot template"));
+        .stderr(predicate::str::contains("--feature is not supported"));
 }
 
 #[test]

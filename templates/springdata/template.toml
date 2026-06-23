@@ -1,0 +1,12 @@
+id = "springdata"
+name = "Spring Data API"
+description = "A Spring Boot API with web, JPA, PostgreSQL, and repository scaffolding."
+short_name = "springdata"
+aliases = ["data", "jpa"]
+language = "Java"
+tags = ["Web", "Spring", "Data"]
+default_build_tool = "gradle"
+renderer = "springboot"
+main_class = "Application"
+default_features = ["web", "actuator", "data-jpa", "postgresql"]
+supported_features = ["web", "actuator", "data-jpa", "security", "lombok", "postgresql"]

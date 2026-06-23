@@ -1,3 +1,12 @@
 id = "springboot"
 name = "Spring Boot Application"
 description = "A Spring Boot application template with optional starters and tests."
+short_name = "springboot"
+aliases = ["spring"]
+language = "Java"
+tags = ["Web", "Spring", "Boot"]
+default_build_tool = "gradle"
+renderer = "springboot"
+main_class = "Application"
+default_features = ["web"]
+supported_features = ["web", "actuator", "data-jpa", "security", "lombok", "postgresql", "batch"]

@@ -1,3 +1,9 @@
 id = "library"
 name = "Class Library"
-description = "A Maven-based Java library with JUnit tests."
+description = "A reusable Java library packaged for Maven or Gradle consumers."
+short_name = "library"
+aliases = ["lib", "classlib"]
+language = "Java"
+tags = ["Common", "Library"]
+default_build_tool = "maven"
+renderer = "library"

@@ -19,31 +19,31 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <profiles>
+    <profile>
+      <id>debug</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <maven.compiler.debug>true</maven.compiler.debug>
+      </properties>
+    </profile>
+    <profile>
+      <id>release</id>
+      <properties>
+        <maven.compiler.debug>false</maven.compiler.debug>
+      </properties>
+    </profile>
+  </profiles>
+
   <dependencies>
-    {% if spring_has_web %}
+    {% for dependency in spring_maven_dependencies %}
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <artifactId>{{ dependency }}</artifactId>
     </dependency>
-    {% endif %}
-    {% if spring_has_actuator %}
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-actuator</artifactId>
-    </dependency>
-    {% endif %}
-    {% if spring_has_data_jpa %}
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    {% endif %}
-    {% if spring_has_security %}
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-    {% endif %}
+    {% endfor %}
     {% if spring_has_lombok %}
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -51,13 +51,13 @@
       <optional>true</optional>
     </dependency>
     {% endif %}
-    {% if spring_has_postgresql %}
+    {% for dependency in spring_runtime_maven_dependencies %}
     <dependency>
       <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>{{ dependency }}</artifactId>
       <scope>runtime</scope>
     </dependency>
-    {% endif %}
+    {% endfor %}
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

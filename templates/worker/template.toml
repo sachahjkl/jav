@@ -1,0 +1,10 @@
+id = "worker"
+name = "Worker Service"
+description = "A long-running Java worker skeleton for background processing."
+short_name = "worker"
+aliases = ["service", "background"]
+language = "Java"
+tags = ["Common", "Worker"]
+default_build_tool = "gradle"
+renderer = "plain-app"
+main_class = "Worker"

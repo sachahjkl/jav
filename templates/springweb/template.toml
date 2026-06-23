@@ -1,0 +1,12 @@
+id = "springweb"
+name = "Spring Web API"
+description = "A Spring Boot REST API with web and actuator starters enabled."
+short_name = "springweb"
+aliases = ["web", "webapi", "api"]
+language = "Java"
+tags = ["Web", "Spring", "API"]
+default_build_tool = "gradle"
+renderer = "springboot"
+main_class = "Application"
+default_features = ["web", "actuator"]
+supported_features = ["web", "actuator", "security", "lombok"]

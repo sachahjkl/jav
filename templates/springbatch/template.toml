@@ -1,0 +1,12 @@
+id = "springbatch"
+name = "Spring Batch Job"
+description = "A Spring Boot batch job starter for scheduled and data processing work."
+short_name = "springbatch"
+aliases = ["batch", "job"]
+language = "Java"
+tags = ["Spring", "Batch", "Worker"]
+default_build_tool = "gradle"
+renderer = "springboot"
+main_class = "Application"
+default_features = ["batch", "actuator"]
+supported_features = ["batch", "actuator", "data-jpa", "postgresql", "lombok"]

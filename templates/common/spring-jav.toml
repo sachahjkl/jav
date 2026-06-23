@@ -1,0 +1,4 @@
+[run]
+main_class = "{{ package_name }}.Application"
+maven_task = "spring-boot:run"
+gradle_task = "bootRun"

@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context, Result};
 use flate2::read::GzDecoder;
 use reqwest::blocking::Client;
-use reqwest::header::{ACCEPT, HeaderMap, HeaderValue, USER_AGENT};
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, USER_AGENT};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::env;
@@ -153,7 +153,10 @@ pub fn download_manifest(
 pub fn build_client() -> Result<Client> {
     let mut headers = HeaderMap::new();
     headers.insert(USER_AGENT, HeaderValue::from_static("jav-upgrade/1.0"));
-    headers.insert(ACCEPT, HeaderValue::from_static("application/vnd.github+json"));
+    headers.insert(
+        ACCEPT,
+        HeaderValue::from_static("application/vnd.github+json"),
+    );
 
     Client::builder()
         .default_headers(headers)
@@ -162,7 +165,8 @@ pub fn build_client() -> Result<Client> {
 }
 
 pub fn sha256_file(path: &Path) -> Result<String> {
-    let mut file = File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
+    let mut file =
+        File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
     let mut hasher = Sha256::new();
     let mut buffer = [0_u8; 8192];
 
@@ -219,7 +223,10 @@ fn extract_tar_gz_binary(archive_bytes: &[u8]) -> Result<PathBuf> {
     for entry in archive.entries().context("invalid tar.gz release asset")? {
         let mut entry = entry?;
         let path = entry.path()?;
-        let name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+        let name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default();
         if name == "jav" || name.eq_ignore_ascii_case("jav.exe") {
             let temp = unique_temp_path(name);
             let mut file = File::create(&temp)?;
@@ -241,7 +248,8 @@ pub fn replace_executable(current: &Path, replacement: &Path) -> Result<()> {
     {
         let backup = current.with_extension("exe.bak");
         let script = current.with_extension("upgrade.cmd");
-        let script_body = windows_replacement_script(replacement, current, &backup, std::process::id());
+        let script_body =
+            windows_replacement_script(replacement, current, &backup, std::process::id());
         fs::write(&script, script_body)
             .with_context(|| format!("failed to write {}", script.display()))?;
         std::process::Command::new("cmd")
@@ -269,7 +277,12 @@ pub fn replace_executable(current: &Path, replacement: &Path) -> Result<()> {
 }
 
 #[cfg(target_os = "windows")]
-fn windows_replacement_script(replacement: &Path, current: &Path, backup: &Path, pid: u32) -> String {
+fn windows_replacement_script(
+    replacement: &Path,
+    current: &Path,
+    backup: &Path,
+    pid: u32,
+) -> String {
     format!(
         "@echo off\r\nsetlocal\r\nset \"NEW={}\"\r\nset \"TARGET={}\"\r\nset \"BACKUP={}\"\r\nset \"PID={}\"\r\n:wait\r\ntasklist /FI \"PID eq %PID%\" 2>nul | find \"%PID%\" >nul\r\nif not errorlevel 1 (\r\n  timeout /t 1 /nobreak >nul\r\n  goto wait\r\n)\r\nif not exist \"%NEW%\" exit /b 1\r\nif exist \"%BACKUP%\" del /f /q \"%BACKUP%\" >nul 2>nul\r\nif exist \"%TARGET%\" move /Y \"%TARGET%\" \"%BACKUP%\" >nul\r\ncopy /Y \"%NEW%\" \"%TARGET%\" >nul\r\nif errorlevel 1 (\r\n  if exist \"%BACKUP%\" move /Y \"%BACKUP%\" \"%TARGET%\" >nul\r\n  exit /b 1\r\n)\r\ndel /f /q \"%NEW%\" >nul 2>nul\r\ndel /f /q \"%BACKUP%\" >nul 2>nul\r\ndel /f /q \"%~f0\" >nul 2>nul\r\n",
         replacement.display(),
@@ -280,9 +293,15 @@ fn windows_replacement_script(replacement: &Path, current: &Path, backup: &Path,
 }
 
 pub fn release_summary(manifest: &ReleaseManifest) -> Vec<String> {
-    let mut lines = vec![format!("latest version {}+{}", manifest.version, manifest.commit)];
+    let mut lines = vec![format!(
+        "latest version {}+{}",
+        manifest.version, manifest.commit
+    )];
     for asset in &manifest.assets {
-        lines.push(format!("{} {} {}", asset.rid, asset.file_name, asset.sha256));
+        lines.push(format!(
+            "{} {} {}",
+            asset.rid, asset.file_name, asset.sha256
+        ));
     }
     lines
 }

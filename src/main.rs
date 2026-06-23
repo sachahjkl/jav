@@ -22,9 +22,9 @@ fn main() -> Result<()> {
         Commands::Doctor => commands::doctor::run(&runner),
         Commands::Upgrade(args) => commands::upgrade::run(args),
         Commands::New(args) => commands::new::run(args),
-        Commands::Build => commands::build::run(&runner),
+        Commands::Build(args) => commands::build::run(args, &runner),
         Commands::Test => commands::test::run(&runner),
-        Commands::Run => commands::run::run(&runner),
+        Commands::Run(args) => commands::run::run(args, &runner),
         Commands::Clean => commands::clean::run(&runner),
     }
 }

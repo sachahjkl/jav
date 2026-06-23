@@ -65,6 +65,9 @@ pub fn run(args: UpgradeArgs) -> Result<()> {
     fs::remove_file(&download).ok();
     upgrade::replace_executable(&executable, &replacement)?;
 
-    output::status("upgraded", format!("{}+{}", manifest.version, manifest.commit));
+    output::status(
+        "upgraded",
+        format!("{}+{}", manifest.version, manifest.commit),
+    );
     Ok(())
 }

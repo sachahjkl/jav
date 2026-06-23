@@ -9,8 +9,27 @@
 
   <properties>
     <maven.compiler.release>{{ java_version }}</maven.compiler.release>
+    <jav.configuration>debug</jav.configuration>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
+
+  <profiles>
+    <profile>
+      <id>debug</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <maven.compiler.debug>true</maven.compiler.debug>
+      </properties>
+    </profile>
+    <profile>
+      <id>release</id>
+      <properties>
+        <maven.compiler.debug>false</maven.compiler.debug>
+      </properties>
+    </profile>
+  </profiles>
 
   <dependencies>
     <dependency>
@@ -33,7 +52,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.5.0</version>
         <configuration>
-          <mainClass>{{ package_name }}.Main</mainClass>
+          <mainClass>{{ package_name }}.{{ main_class }}</mainClass>
         </configuration>
       </plugin>
     </plugins>

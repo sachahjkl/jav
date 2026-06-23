@@ -1,0 +1,4 @@
+[run]
+main_class = "{{ package_name }}.{{ main_class }}"
+maven_task = "exec:java"
+gradle_task = "run"

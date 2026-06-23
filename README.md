@@ -1,48 +1,102 @@
 # jav
 
-`jav` is a CLI for Java project creation, detection, build/test/run workflows, and release-binary upgrades.
+`jav` is a modern CLI for Java projects. It creates projects from templates, detects Maven/Gradle/simple Java layouts, and gives you one command shape for `new`, `build`, `test`, `run`, `clean`, `doctor`, and `upgrade`.
 
-## Current State
+The goal is not to replace Maven or Gradle. The goal is to make the everyday Java workflow feel integrated.
 
-This repository currently contains the first vertical slice:
-
-- Rust CLI project
-- `jav doctor`
-- `jav new console`
-- `jav new library`
-- `jav new springboot`
-- `jav build`
-- `jav test`
-- `jav run`
-- `jav clean`
-- GitHub Releases upgrade checks and binary replacement
-- GitHub Actions CI and release automation
-- Nix flake for build, check, and release helpers
-
-## Build
+## Quick Start
 
 ```bash
-cargo build --release
+jav new
+jav new list --verbose
+jav new console --name Demo --package dev.example.demo
+cd Demo
+jav run
 ```
 
-When dependencies change, regenerate the lockfile:
+`jav run` builds first when sources are newer than outputs. Use `--no-build` when you explicitly want to skip that check.
+
+## Commands
 
 ```bash
-cargo generate-lockfile
+jav doctor
+jav new list
+jav new springweb --describe
+jav new springweb --name Api --build-tool gradle
+jav build --configuration release
+jav test
+jav run --configuration debug -- hello world
+jav clean
+jav upgrade --check
 ```
 
-Run locally:
+Build and run support `debug` and `release` configurations. For generated projects this maps to Java-native Maven profiles or Gradle properties.
+
+Generated runnable projects include a `jav.toml` file for run defaults such as main class and Maven/Gradle task. Edit it when a project needs a custom run shape.
+
+## Templates
+
+Installed templates:
+
+- `console`: executable Java app with JUnit tests, defaults to Maven
+- `cli`: command-line app skeleton, defaults to Gradle
+- `worker`: long-running/background worker skeleton, defaults to Gradle
+- `library`: reusable Java library, defaults to Maven
+- `junit`: focused JUnit 5 test project, defaults to Maven
+- `springboot`: configurable Spring Boot app, defaults to Gradle
+- `springweb`: Spring REST API, defaults to Gradle
+- `springdata`: Spring API with JPA/PostgreSQL scaffolding, defaults to Gradle
+- `springsecurity`: Spring API with security defaults, defaults to Gradle
+- `springbatch`: Spring Batch job starter, defaults to Gradle
+
+Common template options:
 
 ```bash
-cargo run -- doctor
-cargo run -- new console --name Demo --package dev.example.demo
-cargo run -- new springboot --name Api --package dev.example.api --feature web --feature actuator
-cargo run -- build
-cargo run -- test
-cargo run -- upgrade --check
+jav new console --name Demo --package dev.example.demo
+jav new library --name Core --build-tool gradle
+jav new springboot --name Service --feature web --feature actuator
+jav new springdata --name Api --spring-boot-version 3.5.0
 ```
 
-Useful local verification commands:
+Supported build tools are `maven` and `gradle`. Pass `--build-tool` to override the template default.
+
+Template aliases are supported too, for example `webapi` for `springweb` and `classlib` for `library`.
+
+## Install
+
+Run without installing through Nix:
+
+```bash
+nix run github:sachahjkl/jav -- doctor
+```
+
+Install with Nix:
+
+```bash
+nix profile install github:sachahjkl/jav
+```
+
+Install from release binaries:
+
+```powershell
+irm https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.ps1 | iex
+```
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.sh | sh
+```
+
+Nix-managed installs should be upgraded with Nix. Release-binary installs can use `jav upgrade`.
+
+## Development
+
+```bash
+nix develop
+cargo run -- new list
+cargo run -- build --configuration release
+```
+
+Verify changes:
 
 ```bash
 cargo fmt --all
@@ -50,141 +104,17 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-With Nix:
+`Cargo.toml` is the source of truth for the package version.
+
+## Release
+
+Releases are automated from `master`. The release workflow builds Windows and Linux artifacts, creates the GitHub release, and publishes `release.json` for `jav upgrade`.
+
+Before a release commit:
 
 ```bash
-nix develop
-nix run . -- doctor
-nix run .#check
-nix build .#default
-nix run .#set-version
-nix run .#set-version -- 2026.623.1
-```
-
-`Cargo.toml` is the source of truth for the package and release version.
-
-Templates currently support:
-
-- `console`
-- `library`
-- `springboot`
-
-Template options currently support:
-
-- `--build-tool maven|gradle`
-- `--feature ...` for `springboot`
-- `--spring-boot-version` for `springboot`
-
-Install locally on Windows:
-
-```powershell
-.\scripts\install.ps1
-```
-
-Install from the latest GitHub release:
-
-```powershell
-irm https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.ps1 | iex
-```
-
-## Install
-
-### Nix
-
-Run the CLI without installing it:
-
-```bash
-nix run github:sachahjkl/jav -- doctor
-```
-
-Refresh to the latest pushed revision when needed:
-
-```bash
-nix run --refresh github:sachahjkl/jav -- --version
-```
-
-Install it into your Nix profile for repeated use:
-
-```bash
-nix profile install github:sachahjkl/jav
-jav --version
-```
-
-Upgrade a profile install:
-
-```bash
-nix profile upgrade github:sachahjkl/jav
-```
-
-`jav upgrade` is disabled for Nix-managed installs. Use `nix run --refresh ...` or `nix profile upgrade ...` instead.
-
-### Release Binaries
-
-Windows install from the latest GitHub release:
-
-```powershell
-irm https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.ps1 | iex
-```
-
-Default install location:
-
-```text
-%LOCALAPPDATA%\jav\bin
-```
-
-The installer adds this directory to the user `PATH` unless `-NoPathUpdate` is passed.
-
-Linux/WSL install from the latest GitHub release:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.sh | sh
-```
-
-Default install location:
-
-```text
-~/.local/bin
-```
-
-The Linux/WSL installer detects the current shell and updates the matching init file when possible:
-
-- bash: `~/.bashrc`
-- zsh: `~/.zshrc`
-- fish: `~/.config/fish/config.fish`
-- nushell: `~/.config/nushell/env.nu`
-- PowerShell: `~/.config/powershell/Microsoft.PowerShell_profile.ps1`
-
-Use `JAV_NO_PATH_UPDATE=1` or `--no-path-update` to skip shell profile changes.
-
-## CI and Release
-
-CI runs on pull requests and pushes to `develop`, `main`, or `master`:
-
-- Windows job: build, test, package `win-x64`
-- Linux job: install Nix, run `nix build .#default`, run `nix run .#check`, publish `linux-x64`
-
-Releases are automated from `master`.
-
-Before pushing a release commit, bump `Cargo.toml`:
-
-```bash
-git fetch --tags
 nix run .#set-version
 git add Cargo.toml Cargo.lock
 git commit -m "bump version"
 git push origin master
 ```
-
-The release workflow reads `Cargo.toml` and fails early if `v<version>` already exists.
-
-When a commit lands on `master`, `.github/workflows/release.yml`:
-
-1. reads the version and creates the matching tag
-2. publishes Windows and Linux artifacts
-3. creates a GitHub Release
-4. uploads:
-   - `jav-win-x64.zip`
-   - `jav-linux-x64.tar.gz`
-   - `release.json`
-
-`release.json` is the manifest used by `jav upgrade --check` and `jav upgrade`.

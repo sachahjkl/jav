@@ -1,0 +1,10 @@
+id = "cli"
+name = "Command-Line Application"
+description = "A structured command-line app with argument parsing shape and tests."
+short_name = "cli"
+aliases = ["tool", "command"]
+language = "Java"
+tags = ["Common", "CLI"]
+default_build_tool = "gradle"
+renderer = "plain-app"
+main_class = "CommandApp"

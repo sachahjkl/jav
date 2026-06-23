@@ -1,0 +1,12 @@
+id = "springsecurity"
+name = "Spring Security API"
+description = "A Spring Boot API with security defaults and a health endpoint."
+short_name = "springsecurity"
+aliases = ["secureapi", "security"]
+language = "Java"
+tags = ["Web", "Spring", "Security"]
+default_build_tool = "gradle"
+renderer = "springboot"
+main_class = "Application"
+default_features = ["web", "actuator", "security"]
+supported_features = ["web", "actuator", "security", "lombok"]

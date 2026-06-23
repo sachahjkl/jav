@@ -12,8 +12,13 @@ if [[ $# -eq 0 ]]; then
   year="$(date -u +'%Y')"
   month_day="$(date -u +'%-m%-d')"
   base="${year}.${month_day}"
-  count="$(git -C "$repo_root" tag --list "v${base}.*" | wc -l | tr -d ' ')"
-  build_id="$((count + 1))"
+  build_id=1
+  while IFS= read -r tag; do
+    suffix="${tag#v${base}.}"
+    if [[ "$suffix" =~ ^[0-9]+$ && "$suffix" -ge "$build_id" ]]; then
+      build_id="$((suffix + 1))"
+    fi
+  done < <(git -C "$repo_root" tag --list "v${base}.*")
   version="${base}.${build_id}"
 else
   version="$1"

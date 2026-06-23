@@ -18,26 +18,19 @@ java {
     }
 }
 
+val javConfiguration = providers.gradleProperty("jav.configuration").orElse("debug")
+
 dependencies {
-    {% if spring_has_web %}
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    {% endif %}
-    {% if spring_has_actuator %}
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    {% endif %}
-    {% if spring_has_data_jpa %}
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    {% endif %}
-    {% if spring_has_security %}
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    {% endif %}
+    {% for dependency in spring_gradle_dependencies %}
+    implementation("{{ dependency }}")
+    {% endfor %}
     {% if spring_has_lombok %}
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     {% endif %}
-    {% if spring_has_postgresql %}
-    runtimeOnly("org.postgresql:postgresql")
-    {% endif %}
+    {% for dependency in spring_runtime_gradle_dependencies %}
+    runtimeOnly("{{ dependency }}")
+    {% endfor %}
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
@@ -47,4 +40,8 @@ tasks.test {
 
 application {
     mainClass.set("{{ package_name }}.Application")
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.isDebug = javConfiguration.map { it != "release" }.get()
 }

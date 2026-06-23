@@ -1,3 +1,10 @@
 id = "console"
 name = "Console Application"
-description = "A Maven-based Java console application with JUnit tests."
+description = "A small Java application with an executable main method and JUnit tests."
+short_name = "console"
+aliases = ["app"]
+language = "Java"
+tags = ["Common", "Console"]
+default_build_tool = "maven"
+renderer = "plain-app"
+main_class = "Main"

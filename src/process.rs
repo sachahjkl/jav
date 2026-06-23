@@ -44,7 +44,11 @@ fn resolve_program(program: &str) -> Option<PathBuf> {
     )
 }
 
-fn resolve_program_in(program: &str, path_dirs: Vec<PathBuf>, extensions: Vec<String>) -> Option<PathBuf> {
+fn resolve_program_in(
+    program: &str,
+    path_dirs: Vec<PathBuf>,
+    extensions: Vec<String>,
+) -> Option<PathBuf> {
     let candidate = Path::new(program);
     if candidate.is_absolute() || candidate.components().count() > 1 {
         return candidate.is_file().then(|| candidate.to_path_buf());
