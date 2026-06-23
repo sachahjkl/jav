@@ -1,244 +1,162 @@
 # jav
 
-`jav` is a CLI for day-to-day Java project work.
+`jav` is a CLI for Java project creation, detection, build/test/run workflows, and release-binary upgrades.
 
-It gives you one command surface for:
-- creating new Java projects
-- detecting the current project type
-- building, testing, running, and cleaning projects
-- checking local Java tooling
-- self-upgrading from GitHub releases
+## Current State
 
-The current implementation targets three project shapes:
-- Maven projects
-- Gradle projects
-- simple source-tree projects with `src/main/java`
+This repository currently contains the first vertical slice:
 
-## Commands
+- Rust CLI project
+- `jav doctor`
+- `jav new console`
+- `jav new library`
+- `jav build`
+- `jav test`
+- `jav run`
+- `jav clean`
+- GitHub Releases upgrade checks and binary replacement
+- GitHub Actions CI and release automation
+- Nix flake for build, check, and release helpers
 
-```sh
-jav doctor
-jav new console --name Demo --package dev.example.demo
-jav new library --name Shared --package dev.example.shared
-jav build
-jav test
-jav run
-jav clean
-jav upgrade --check
-jav upgrade
+## Build
+
+```bash
+cargo build --release
 ```
 
-## What each command does
+Run locally:
 
-`jav doctor`
-- prints the current `jav` version
-- checks for `java`, `javac`, `mvn`, and `gradle` on `PATH`
-- reports `JAVA_HOME`
-- detects whether the current directory looks like a Java project
-
-`jav new console`
-- creates a console app template
-- writes a Maven project layout
-- generates `pom.xml`
-- generates `src/main/java/.../Main.java`
-- generates `src/test/java/.../MainTest.java`
-
-`jav new library`
-- creates a library template
-- writes a Maven project layout
-- generates `pom.xml`
-- generates `src/main/java/.../Library.java`
-- generates `src/test/java/.../LibraryTest.java`
-
-`jav build`
-- runs `mvn package` in Maven projects
-- runs `gradle build` in Gradle projects
-- compiles `src/main/java/**/*.java` into `out/` for simple projects
-
-`jav test`
-- runs `mvn test` in Maven projects
-- runs `gradle test` in Gradle projects
-- currently errors for simple projects
-
-`jav run`
-- runs `mvn exec:java` in Maven projects
-- runs `gradle run` in Gradle projects
-- currently errors for simple projects
-
-`jav clean`
-- runs `mvn clean` in Maven projects
-- runs `gradle clean` in Gradle projects
-- removes `out/` for simple projects
-
-`jav upgrade --check`
-- queries the latest GitHub release
-- downloads `release.json`
-- prints the current version and available release assets
-
-`jav upgrade`
-- finds the asset matching the current runtime identifier
-- downloads the release asset
-- verifies the SHA256 from `release.json`
-- replaces the current executable
-- refuses to run for Nix-managed installs
-
-## Project detection
-
-`jav` chooses behavior from the current directory:
-- `pom.xml` => Maven
-- `build.gradle`, `build.gradle.kts`, `settings.gradle`, or `settings.gradle.kts` => Gradle
-- `src/main/java` => simple project
-
-If none of those are present, commands that need a project fail with:
-- `not in a Java project; expected pom.xml, build.gradle, or src/main/java`
-
-## New project generation
-
-Supported templates:
-- `console`
-- `library`
-
-Arguments:
-- `--name` project name
-- `--package` Java package name
-- `--output` output directory, defaults to the project name
-- `--java-version` Java language version, defaults to `21`
-
-Validation rules:
-- project name cannot be empty
-- project name cannot contain path separators
-- package names must be dotted identifiers
-- each package segment must start with a letter or `_`
-- package segments may only contain letters, digits, and `_`
-
-If you omit `--package`, `jav` generates a default package like:
-
-```sh
-com.example.demo
-```
-
-## Installation
-
-### Nix
-
-Run directly from the flake:
-
-```sh
-nix run . -- doctor
-```
-
-Build the package:
-
-```sh
-nix build
-```
-
-Run the repo validation app:
-
-```sh
-nix run .#check
-```
-
-Enter the development shell:
-
-```sh
-nix develop
-```
-
-### Cargo
-
-For local development:
-
-```sh
+```bash
 cargo run -- doctor
-cargo test
-```
-
-Install from the current checkout:
-
-```sh
-cargo install --path .
-```
-
-## Upgrade behavior
-
-By default, `jav upgrade` reads releases from:
-
-```text
-https://github.com/sachahjkl/jav
-```
-
-It expects a GitHub release asset named `release.json` with a manifest like:
-- version
-- commit
-- per-platform assets
-- SHA256 checksums
-
-Optional overrides:
-
-```sh
-export JAV_UPGRADE_OWNER=sachahjkl
-export JAV_UPGRADE_REPOSITORY=jav
-export JAV_UPGRADE_PRERELEASE=false
-export JAV_UPGRADE_ASSET=release.json
-```
-
-Notes:
-- automatic upgrade currently supports `linux-x64` and `win-x64`
-- Nix-managed binaries are intentionally not replaced in place
-- on Linux, the binary is replaced directly
-- on Windows, replacement is delegated to a temporary `cmd` script after process exit
-
-## Release automation
-
-The release version comes from `Cargo.toml`.
-
-To set a version manually:
-
-```sh
-nix run .#set-version -- 2026.06.23.1
-```
-
-To generate the next date-based version automatically:
-
-```sh
-nix run .#set-version
-```
-
-That command:
-- uses the current UTC date as `YYYY.MM.DD`
-- counts existing tags matching `vYYYY.MM.DD.*`
-- writes the next version back to `Cargo.toml`
-
-GitHub Actions includes:
-- CI workflow for Linux and Windows
-- release workflow that tags `v<version>`
-- packaged release assets for `linux-x64` and `win-x64`
-- generated `release.json` for `jav upgrade`
-
-## Development
-
-Useful commands:
-
-```sh
-nix develop
-cargo fmt --all
-cargo clippy --all-targets -- -D warnings
-cargo test
-cargo run -- doctor
+cargo run -- new console --name Demo --package dev.example.demo
+cargo run -- build
+cargo run -- test
 cargo run -- upgrade --check
 ```
 
-There is also a `justfile` with:
-- `just fmt`
-- `just lint`
-- `just test`
-- `just nextest`
-- `just check`
+With Nix:
 
-## Current limitations
+```bash
+nix develop
+nix run . -- doctor
+nix run .#check
+nix build .#default
+nix run .#set-version
+nix run .#set-version -- 2026.06.23.1
+```
 
-- `new` currently generates Maven-based templates only
-- simple projects support `build` and `clean`, but not `run` or `test`
-- Maven `run` assumes `mvn exec:java` works for the project
-- upgrade support is implemented for Linux and Windows x64 only
+`Cargo.toml` is the source of truth for the package and release version.
+
+Install locally on Windows:
+
+```powershell
+.\scripts\install.ps1
+```
+
+Install from the latest GitHub release:
+
+```powershell
+irm https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.ps1 | iex
+```
+
+## Install
+
+### Nix
+
+Run the CLI without installing it:
+
+```bash
+nix run github:sachahjkl/jav -- doctor
+```
+
+Refresh to the latest pushed revision when needed:
+
+```bash
+nix run --refresh github:sachahjkl/jav -- --version
+```
+
+Install it into your Nix profile for repeated use:
+
+```bash
+nix profile install github:sachahjkl/jav
+jav --version
+```
+
+Upgrade a profile install:
+
+```bash
+nix profile upgrade github:sachahjkl/jav
+```
+
+`jav upgrade` is disabled for Nix-managed installs. Use `nix run --refresh ...` or `nix profile upgrade ...` instead.
+
+### Release Binaries
+
+Windows install from the latest GitHub release:
+
+```powershell
+irm https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.ps1 | iex
+```
+
+Default install location:
+
+```text
+%LOCALAPPDATA%\jav\bin
+```
+
+The installer adds this directory to the user `PATH` unless `-NoPathUpdate` is passed.
+
+Linux/WSL install from the latest GitHub release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sachahjkl/jav/master/scripts/install.sh | sh
+```
+
+Default install location:
+
+```text
+~/.local/bin
+```
+
+The Linux/WSL installer detects the current shell and updates the matching init file when possible:
+
+- bash: `~/.bashrc`
+- zsh: `~/.zshrc`
+- fish: `~/.config/fish/config.fish`
+- nushell: `~/.config/nushell/env.nu`
+- PowerShell: `~/.config/powershell/Microsoft.PowerShell_profile.ps1`
+
+Use `JAV_NO_PATH_UPDATE=1` or `--no-path-update` to skip shell profile changes.
+
+## CI and Release
+
+CI runs on pull requests and pushes to `develop`, `main`, or `master`:
+
+- Windows job: build, test, package `win-x64`
+- Linux job: install Nix, run `nix build .#default`, run `nix run .#check`, publish `linux-x64`
+
+Releases are automated from `master`.
+
+Before pushing a release commit, bump `Cargo.toml`:
+
+```bash
+git fetch --tags
+nix run .#set-version
+git add Cargo.toml Cargo.lock
+git commit -m "bump version"
+git push origin master
+```
+
+The release workflow reads `Cargo.toml` and fails early if `v<version>` already exists.
+
+When a commit lands on `master`, `.github/workflows/release.yml`:
+
+1. reads the version and creates the matching tag
+2. publishes Windows and Linux artifacts
+3. creates a GitHub Release
+4. uploads:
+   - `jav-win-x64.zip`
+   - `jav-linux-x64.tar.gz`
+   - `release.json`
+
+`release.json` is the manifest used by `jav upgrade --check` and `jav upgrade`.
