@@ -1,6 +1,6 @@
 [package]
 name = "jav"
-version = "2026.623.6"
+version = "2026.623.7"
 edition = "2021"
 description = "A modern CLI for Java projects"
 license = "MIT"
