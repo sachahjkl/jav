@@ -3,9 +3,10 @@ use anyhow::Result;
 use crate::output;
 use crate::process::CommandRunner;
 use crate::project::detect::detect_current;
+use crate::version::APP_VERSION;
 
 pub fn run(runner: &impl CommandRunner) -> Result<()> {
-    output::status("jav", env!("CARGO_PKG_VERSION"));
+    output::status("jav", APP_VERSION);
 
     for tool in ["java", "javac", "mvn", "gradle"] {
         if runner.exists(tool) {

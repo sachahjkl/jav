@@ -14,6 +14,20 @@ fn doctor_runs() {
 }
 
 #[test]
+fn upgrade_check_requires_no_download_when_nix_managed() {
+    let mut command = Command::cargo_bin("jav").unwrap();
+
+    command
+        .env("JAV_UPGRADE_OWNER", "example")
+        .env("JAV_UPGRADE_REPOSITORY", "jav")
+        .arg("upgrade")
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Upgrade jav"));
+}
+
+#[test]
 fn new_console_creates_maven_project() {
     let temp = assert_fs::TempDir::new().unwrap();
     let project = temp.child("Demo");

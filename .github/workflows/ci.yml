@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Linux build, tests and artifact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v17
+        with:
+          name: sachahjkl
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          skipPush: ${{ github.event_name == 'pull_request' }}
+
+      - name: Check flake
+        uses: DeterminateSystems/flake-checker-action@main
+
+      - name: Build Nix package
+        run: nix build .#default
+
+      - name: Smoke test with flake app
+        run: nix run .#check
+
+      - name: Publish linux-x64 artifact
+        run: nix develop -c env COMMIT=${{ github.sha }} bash ./scripts/publish-linux-x64.sh
+
+      - name: Package linux-x64
+        run: tar -czf artifacts/jav-linux-x64.tar.gz -C artifacts/linux-x64 jav
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jav-linux-x64
+          path: |
+            artifacts/jav-linux-x64.tar.gz
+            artifacts/linux-x64/release.json
+
+  windows:
+    name: Windows build and tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+
+      - name: Run tests
+        run: cargo test --locked
+
+      - name: Build win-x64
+        run: cargo build --release --locked --target x86_64-pc-windows-gnu
+
+      - name: Prepare win-x64 artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts/win-x64
+          cp target/x86_64-pc-windows-gnu/release/jav.exe artifacts/win-x64/jav.exe
+          sha256sum artifacts/win-x64/jav.exe | awk '{print $1}' > artifacts/win-x64/jav.exe.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jav-win-x64
+          path: artifacts/win-x64/**

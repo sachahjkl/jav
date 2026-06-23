@@ -12,6 +12,8 @@ pub struct Cli {
 pub enum Commands {
     /// Inspect the Java tooling available on this machine.
     Doctor,
+    /// Upgrade jav from the latest GitHub release.
+    Upgrade(UpgradeArgs),
     /// Create a new Java project from a template.
     New(NewArgs),
     /// Build the current Java project.
@@ -22,6 +24,17 @@ pub enum Commands {
     Run,
     /// Clean build outputs for the current Java project.
     Clean,
+}
+
+#[derive(Debug, Args)]
+pub struct UpgradeArgs {
+    /// Print release metadata without downloading anything.
+    #[arg(long)]
+    pub check: bool,
+
+    /// Override the runtime identifier to upgrade.
+    #[arg(long)]
+    pub rid: Option<String>,
 }
 
 #[derive(Debug, Args)]
