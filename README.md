@@ -25,6 +25,12 @@ This repository currently contains the first vertical slice:
 cargo build --release
 ```
 
+When dependencies change, regenerate the lockfile:
+
+```bash
+cargo generate-lockfile
+```
+
 Run locally:
 
 ```bash
@@ -36,6 +42,14 @@ cargo run -- test
 cargo run -- upgrade --check
 ```
 
+Useful local verification commands:
+
+```bash
+cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+cargo test
+```
+
 With Nix:
 
 ```bash
@@ -44,7 +58,7 @@ nix run . -- doctor
 nix run .#check
 nix build .#default
 nix run .#set-version
-nix run .#set-version -- 2026.06.23.1
+nix run .#set-version -- 2026.623.1
 ```
 
 `Cargo.toml` is the source of truth for the package and release version.

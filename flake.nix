@@ -121,7 +121,7 @@
             echo "  nix run .#check"
             echo "  nix run .#publish-linux-x64"
             echo "  nix run .#set-version"
-            echo "  nix run .#set-version -- 2026.06.23.1"
+            echo "  nix run .#set-version -- 2026.623.1"
             echo ""
             echo "Version: ${version}+${sourceRevision}"
           '';

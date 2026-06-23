@@ -45,6 +45,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
@@ -90,6 +93,9 @@ jobs:
         with:
           targets: x86_64-pc-windows-gnu
 
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Run tests
         run: cargo test --locked
 
@@ -97,11 +103,11 @@ jobs:
         run: cargo build --release --locked --target x86_64-pc-windows-gnu
 
       - name: Package win-x64
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p artifacts/win-x64
-          cp target/x86_64-pc-windows-gnu/release/jav.exe artifacts/win-x64/jav.exe
-          (cd artifacts/win-x64 && zip -j ../jav-win-x64.zip jav.exe)
+          New-Item -ItemType Directory -Force -Path artifacts/win-x64 | Out-Null
+          Copy-Item target/x86_64-pc-windows-gnu/release/jav.exe artifacts/win-x64/jav.exe -Force
+          Compress-Archive -Path artifacts/win-x64/jav.exe -DestinationPath artifacts/jav-win-x64.zip -Force
 
       - name: Build win release manifest
         shell: bash
