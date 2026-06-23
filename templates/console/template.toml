@@ -1,0 +1,3 @@
+id = "console"
+name = "Console Application"
+description = "A Maven-based Java console application with JUnit tests."

@@ -1,0 +1,3 @@
+id = "library"
+name = "Class Library"
+description = "A Maven-based Java library with JUnit tests."
