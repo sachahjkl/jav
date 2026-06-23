@@ -45,11 +45,6 @@ fn resolve_program(program: &str) -> Option<PathBuf> {
     let extensions = executable_extensions();
 
     for dir in env::split_paths(&path) {
-        let direct = dir.join(program);
-        if direct.is_file() {
-            return Some(direct);
-        }
-
         if candidate.extension().is_none() {
             for extension in &extensions {
                 let resolved = dir.join(format!("{program}{extension}"));
@@ -57,6 +52,11 @@ fn resolve_program(program: &str) -> Option<PathBuf> {
                     return Some(resolved);
                 }
             }
+        }
+
+        let direct = dir.join(program);
+        if direct.is_file() {
+            return Some(direct);
         }
     }
 
@@ -143,6 +143,35 @@ pub mod tests {
     #[test]
     fn resolves_windows_style_suffixes_from_pathext() {
         let temp = assert_fs::TempDir::new().unwrap();
+        temp.child("mvn.cmd").touch().unwrap();
+
+        let original_path = env::var_os("PATH");
+        let original_pathext = env::var_os("PATHEXT");
+        env::set_var("PATH", temp.path());
+        env::set_var("PATHEXT", ".COM;.EXE;.BAT;.CMD");
+
+        let resolved = resolve_program("mvn");
+
+        if let Some(path) = original_path {
+            env::set_var("PATH", path);
+        } else {
+            env::remove_var("PATH");
+        }
+
+        if let Some(pathext) = original_pathext {
+            env::set_var("PATHEXT", pathext);
+        } else {
+            env::remove_var("PATHEXT");
+        }
+
+        assert_eq!(resolved, Some(temp.child("mvn.cmd").path().to_path_buf()));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn prefers_windows_script_suffix_over_plain_file() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        temp.child("mvn").touch().unwrap();
         temp.child("mvn.cmd").touch().unwrap();
 
         let original_path = env::var_os("PATH");
