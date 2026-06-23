@@ -174,7 +174,8 @@ pub fn sha256_file(path: &Path) -> Result<String> {
         hasher.update(&buffer[..count]);
     }
 
-    Ok(format!("{:x}", hasher.finalize()))
+    let digest = hasher.finalize();
+    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 pub fn prepare_replacement(asset_name: &str, archive_bytes: &[u8]) -> Result<PathBuf> {
