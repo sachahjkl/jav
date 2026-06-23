@@ -36,15 +36,21 @@ impl CommandRunner for RealRunner {
 }
 
 fn resolve_program(program: &str) -> Option<PathBuf> {
+    let path = env::var_os("PATH")?;
+    resolve_program_in(
+        program,
+        env::split_paths(&path).collect::<Vec<_>>(),
+        executable_extensions(),
+    )
+}
+
+fn resolve_program_in(program: &str, path_dirs: Vec<PathBuf>, extensions: Vec<String>) -> Option<PathBuf> {
     let candidate = Path::new(program);
     if candidate.is_absolute() || candidate.components().count() > 1 {
         return candidate.is_file().then(|| candidate.to_path_buf());
     }
 
-    let path = env::var_os("PATH")?;
-    let extensions = executable_extensions();
-
-    for dir in env::split_paths(&path) {
+    for dir in path_dirs {
         if candidate.extension().is_none() {
             for extension in &extensions {
                 let resolved = dir.join(format!("{program}{extension}"));
@@ -125,73 +131,36 @@ pub mod tests {
         let temp = assert_fs::TempDir::new().unwrap();
         temp.child("mvn").touch().unwrap();
 
-        let original_path = env::var_os("PATH");
-        env::set_var("PATH", temp.path());
-
-        let resolved = resolve_program("mvn");
-
-        if let Some(path) = original_path {
-            env::set_var("PATH", path);
-        } else {
-            env::remove_var("PATH");
-        }
+        let resolved = resolve_program_in("mvn", vec![temp.path().to_path_buf()], Vec::new());
 
         assert_eq!(resolved, Some(temp.child("mvn").path().to_path_buf()));
     }
 
-    #[cfg(windows)]
     #[test]
     fn resolves_windows_style_suffixes_from_pathext() {
         let temp = assert_fs::TempDir::new().unwrap();
         temp.child("mvn.cmd").touch().unwrap();
 
-        let original_path = env::var_os("PATH");
-        let original_pathext = env::var_os("PATHEXT");
-        env::set_var("PATH", temp.path());
-        env::set_var("PATHEXT", ".COM;.EXE;.BAT;.CMD");
-
-        let resolved = resolve_program("mvn");
-
-        if let Some(path) = original_path {
-            env::set_var("PATH", path);
-        } else {
-            env::remove_var("PATH");
-        }
-
-        if let Some(pathext) = original_pathext {
-            env::set_var("PATHEXT", pathext);
-        } else {
-            env::remove_var("PATHEXT");
-        }
+        let resolved = resolve_program_in(
+            "mvn",
+            vec![temp.path().to_path_buf()],
+            vec![".com".into(), ".exe".into(), ".bat".into(), ".cmd".into()],
+        );
 
         assert_eq!(resolved, Some(temp.child("mvn.cmd").path().to_path_buf()));
     }
 
-    #[cfg(windows)]
     #[test]
     fn prefers_windows_script_suffix_over_plain_file() {
         let temp = assert_fs::TempDir::new().unwrap();
         temp.child("mvn").touch().unwrap();
         temp.child("mvn.cmd").touch().unwrap();
 
-        let original_path = env::var_os("PATH");
-        let original_pathext = env::var_os("PATHEXT");
-        env::set_var("PATH", temp.path());
-        env::set_var("PATHEXT", ".COM;.EXE;.BAT;.CMD");
-
-        let resolved = resolve_program("mvn");
-
-        if let Some(path) = original_path {
-            env::set_var("PATH", path);
-        } else {
-            env::remove_var("PATH");
-        }
-
-        if let Some(pathext) = original_pathext {
-            env::set_var("PATHEXT", pathext);
-        } else {
-            env::remove_var("PATHEXT");
-        }
+        let resolved = resolve_program_in(
+            "mvn",
+            vec![temp.path().to_path_buf()],
+            vec![".com".into(), ".exe".into(), ".bat".into(), ".cmd".into()],
+        );
 
         assert_eq!(resolved, Some(temp.child("mvn.cmd").path().to_path_buf()));
     }
