@@ -23,7 +23,7 @@ pub fn render(template: &str, destination: &Path, context: TemplateContext) -> R
         bail!("destination already exists: {}", destination.display());
     }
 
-    let files = files(template).with_context(|| format!("template '{template}' has no files"))?;
+    let files = files(template, &context).with_context(|| format!("template '{template}' has no files"))?;
     let tera_context = tera_context(&context);
 
     for (relative_path, content) in files {
@@ -47,5 +47,31 @@ fn tera_context(context: &TemplateContext) -> TeraContext {
     tera_context.insert("package_name", &context.package_name);
     tera_context.insert("package_path", &context.package_path);
     tera_context.insert("java_version", &context.java_version);
+    tera_context.insert("build_tool", &context.build_tool);
+    tera_context.insert("spring_boot_version", &context.spring_boot_version);
+    tera_context.insert(
+        "spring_has_web",
+        &context.spring_features.iter().any(|feature| feature == "web"),
+    );
+    tera_context.insert(
+        "spring_has_actuator",
+        &context.spring_features.iter().any(|feature| feature == "actuator"),
+    );
+    tera_context.insert(
+        "spring_has_data_jpa",
+        &context.spring_features.iter().any(|feature| feature == "data-jpa"),
+    );
+    tera_context.insert(
+        "spring_has_security",
+        &context.spring_features.iter().any(|feature| feature == "security"),
+    );
+    tera_context.insert(
+        "spring_has_lombok",
+        &context.spring_features.iter().any(|feature| feature == "lombok"),
+    );
+    tera_context.insert(
+        "spring_has_postgresql",
+        &context.spring_features.iter().any(|feature| feature == "postgresql"),
+    );
     tera_context
 }

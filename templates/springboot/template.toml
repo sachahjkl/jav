@@ -1,0 +1,3 @@
+id = "springboot"
+name = "Spring Boot Application"
+description = "A Spring Boot application template with optional starters and tests."

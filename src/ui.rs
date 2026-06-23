@@ -2,7 +2,7 @@ use anyhow::Result;
 use dialoguer::{Input, Select};
 
 pub fn select_template() -> Result<String> {
-    let templates = ["console", "library"];
+    let templates = ["console", "library", "springboot"];
     let selection = Select::new()
         .with_prompt("What do you want to create?")
         .items(&templates)

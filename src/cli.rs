@@ -50,7 +50,16 @@ pub struct NewArgs {
     /// Output directory. Defaults to the project name.
     #[arg(short, long)]
     pub output: Option<String>,
+    /// Build tool to generate: maven or gradle.
+    #[arg(long, default_value = "maven")]
+    pub build_tool: String,
     /// Java language version.
     #[arg(long, default_value = "21")]
     pub java_version: String,
+    /// Spring Boot dependency features for the springboot template.
+    #[arg(long = "feature")]
+    pub features: Vec<String>,
+    /// Spring Boot version for the springboot template.
+    #[arg(long, default_value = "3.5.0")]
+    pub spring_boot_version: String,
 }

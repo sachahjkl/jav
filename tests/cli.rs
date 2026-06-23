@@ -57,6 +57,97 @@ fn new_console_creates_maven_project() {
 }
 
 #[test]
+fn new_console_gradle_creates_gradle_project() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let project = temp.child("GradleDemo");
+
+    let mut command = Command::cargo_bin("jav").unwrap();
+    command
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "console",
+            "--name",
+            "GradleDemo",
+            "--package",
+            "dev.example.demo",
+            "--build-tool",
+            "gradle",
+        ])
+        .assert()
+        .success();
+
+    project
+        .child("build.gradle.kts")
+        .assert(predicate::path::exists());
+    project
+        .child("settings.gradle.kts")
+        .assert(predicate::path::exists());
+    project.child("pom.xml").assert(predicate::path::missing());
+}
+
+#[test]
+fn new_springboot_creates_project_with_requested_features() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let project = temp.child("ApiDemo");
+
+    let mut command = Command::cargo_bin("jav").unwrap();
+    command
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "springboot",
+            "--name",
+            "ApiDemo",
+            "--package",
+            "dev.example.api",
+            "--feature",
+            "web",
+            "--feature",
+            "actuator",
+            "--feature",
+            "security",
+        ])
+        .assert()
+        .success();
+
+    project.child("pom.xml").assert(predicate::path::exists());
+    project
+        .child("src/main/java/dev/example/api/Application.java")
+        .assert(predicate::path::exists());
+    project
+        .child("src/main/java/dev/example/api/HelloController.java")
+        .assert(predicate::path::exists());
+
+    let pom = std::fs::read_to_string(project.child("pom.xml").path()).unwrap();
+    assert!(pom.contains("spring-boot-starter-web"));
+    assert!(pom.contains("spring-boot-starter-actuator"));
+    assert!(pom.contains("spring-boot-starter-security"));
+}
+
+#[test]
+fn new_rejects_spring_features_for_non_springboot_templates() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let mut command = Command::cargo_bin("jav").unwrap();
+
+    command
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "console",
+            "--name",
+            "Bad",
+            "--package",
+            "dev.example.bad",
+            "--feature",
+            "web",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("only supported for the springboot template"));
+}
+
+#[test]
 fn new_library_rejects_invalid_package() {
     let temp = assert_fs::TempDir::new().unwrap();
     let mut command = Command::cargo_bin("jav").unwrap();

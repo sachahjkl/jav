@@ -10,6 +10,7 @@ This repository currently contains the first vertical slice:
 - `jav doctor`
 - `jav new console`
 - `jav new library`
+- `jav new springboot`
 - `jav build`
 - `jav test`
 - `jav run`
@@ -29,6 +30,7 @@ Run locally:
 ```bash
 cargo run -- doctor
 cargo run -- new console --name Demo --package dev.example.demo
+cargo run -- new springboot --name Api --package dev.example.api --feature web --feature actuator
 cargo run -- build
 cargo run -- test
 cargo run -- upgrade --check
@@ -46,6 +48,18 @@ nix run .#set-version -- 2026.06.23.1
 ```
 
 `Cargo.toml` is the source of truth for the package and release version.
+
+Templates currently support:
+
+- `console`
+- `library`
+- `springboot`
+
+Template options currently support:
+
+- `--build-tool maven|gradle`
+- `--feature ...` for `springboot`
+- `--spring-boot-version` for `springboot`
 
 Install locally on Windows:
 
