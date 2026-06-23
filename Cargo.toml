@@ -2,7 +2,7 @@
 name = "jav"
 version = "0.1.0"
 edition = "2021"
-description = "A dotnet-inspired CLI for Java projects"
+description = "A modern CLI for Java projects"
 license = "MIT"
 
 [dependencies]

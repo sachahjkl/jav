@@ -1,5 +1,5 @@
 {
-  description = "jav - a dotnet-inspired CLI for Java";
+  description = "jav - a modern CLI for Java projects";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

@@ -1,8 +1,8 @@
 # jav
 
-`jav` is a dotnet-inspired CLI for Java projects.
+`jav` is a modern CLI for Java projects.
 
-It gives Java a single, friendly command for creating, building, running, testing, and inspecting projects while integrating with Maven, Gradle, and the broader Java ecosystem.
+It provides a single, reliable command for creating, building, running, testing, and inspecting Java projects while integrating with Maven, Gradle, and the broader Java ecosystem.
 
 ## MVP commands
 

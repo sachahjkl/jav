@@ -2,7 +2,7 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Debug, Parser)]
 #[command(name = "jav")]
-#[command(version, about = "A dotnet-inspired CLI for Java projects")]
+#[command(version, about = "A modern CLI for Java projects")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
