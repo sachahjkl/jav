@@ -10,5 +10,16 @@ jav test
 jav run
 ```
 
+With Nix:
+
+```bash
+nix develop
+nix run .#build
+nix run .#test
+nix run .#run
+```
+
+Commit `flake.lock` after the first Nix command if you want the development environment pinned exactly.
+
 Build tool: `{{ build_tool }}`
 Java version: `{{ java_version }}`

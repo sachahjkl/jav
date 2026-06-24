@@ -111,6 +111,9 @@ pub struct NewArgs {
     /// Build tool to generate: maven or gradle. Defaults depend on the template.
     #[arg(long)]
     pub build_tool: Option<String>,
+    /// Do not generate a Nix flake for the project.
+    #[arg(long)]
+    pub no_flake: bool,
     /// Java language version.
     #[arg(long, default_value = "21")]
     pub java_version: String,

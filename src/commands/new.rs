@@ -65,6 +65,7 @@ pub fn run(args: NewArgs) -> Result<()> {
         spring_boot_version: args.spring_boot_version,
         spring_features,
         main_class,
+        include_flake: !args.no_flake,
     };
 
     render::render(&template_manifest.id, &destination, context).with_context(|| {

@@ -34,6 +34,8 @@ Build and run support `debug` and `release` configurations. For generated projec
 
 Generated runnable projects include a `jav.toml` file for run defaults such as main class and Maven/Gradle task. Edit it when a project needs a custom run shape.
 
+Projects also generate a `flake.nix` by default for a pinned Java/build-tool environment. Use `--no-flake` if you do not want Nix files.
+
 ## Templates
 
 Installed templates:
@@ -61,6 +63,8 @@ jav new springdata --name Api --spring-boot-version 3.5.0
 Supported build tools are `maven` and `gradle`. Pass `--build-tool` to override the template default.
 
 Template aliases are supported too, for example `webapi` for `springweb` and `classlib` for `library`.
+
+Generated dependency versions are pinned in Maven/Gradle files. For fully reproducible project builds, commit `flake.lock` and enable Maven/Gradle dependency locking as needed for the project.
 
 ## Install
 

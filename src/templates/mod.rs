@@ -43,6 +43,7 @@ pub struct TemplateContext {
     pub spring_boot_version: String,
     pub spring_features: Vec<String>,
     pub main_class: String,
+    pub include_flake: bool,
 }
 
 pub const TEMPLATE_IDS: &[&str] = &[
@@ -181,7 +182,7 @@ pub fn files(
     manifest: &TemplateManifest,
     context: &TemplateContext,
 ) -> Option<Vec<(&'static str, &'static str)>> {
-    match manifest.renderer.as_str() {
+    let mut files = match manifest.renderer.as_str() {
         "plain-app" => Some(match context.build_tool.as_str() {
             "gradle" => vec![
                 (".gitignore", include_str!("../../templates/common/gitignore")),
@@ -304,7 +305,16 @@ pub fn files(
             Some(files)
         }
         _ => None,
+    }?;
+
+    if context.include_flake {
+        files.push((
+            "flake.nix",
+            include_str!("../../templates/common/flake.nix"),
+        ));
     }
+
+    Some(files)
 }
 
 fn plain_main_file(template: &str) -> &'static str {

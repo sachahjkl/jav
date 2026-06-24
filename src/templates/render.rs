@@ -56,6 +56,17 @@ fn tera_context(context: &TemplateContext) -> TeraContext {
     tera_context.insert("package_path", &context.package_path);
     tera_context.insert("java_version", &context.java_version);
     tera_context.insert("build_tool", &context.build_tool);
+    tera_context.insert("is_maven", &(context.build_tool == "maven"));
+    tera_context.insert("is_gradle", &(context.build_tool == "gradle"));
+    tera_context.insert(
+        "is_spring",
+        &context.spring_features.iter().any(|feature| {
+            matches!(
+                feature.as_str(),
+                "web" | "actuator" | "data-jpa" | "security" | "postgresql" | "batch"
+            )
+        }),
+    );
     tera_context.insert("spring_boot_version", &context.spring_boot_version);
     tera_context.insert("main_class", &context.main_class);
     tera_context.insert(

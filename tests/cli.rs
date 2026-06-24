@@ -52,6 +52,7 @@ fn new_console_creates_maven_project() {
     project
         .child(".gitignore")
         .assert(predicate::path::exists());
+    project.child("flake.nix").assert(predicate::path::exists());
     project.child("jav.toml").assert(predicate::path::exists());
     project
         .child("src/main/java/dev/example/demo/Main.java")
@@ -59,6 +60,32 @@ fn new_console_creates_maven_project() {
     project
         .child("src/test/java/dev/example/demo/MainTest.java")
         .assert(predicate::path::exists());
+}
+
+#[test]
+fn new_can_skip_flake_generation() {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let project = temp.child("NoFlake");
+
+    let mut command = Command::cargo_bin("jav").unwrap();
+    command
+        .current_dir(temp.path())
+        .args([
+            "new",
+            "console",
+            "--name",
+            "NoFlake",
+            "--package",
+            "dev.example.noflake",
+            "--no-flake",
+        ])
+        .assert()
+        .success();
+
+    project
+        .child("flake.nix")
+        .assert(predicate::path::missing());
+    project.child("pom.xml").assert(predicate::path::exists());
 }
 
 #[test]
