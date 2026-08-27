@@ -308,10 +308,16 @@ pub fn files(
     }?;
 
     if context.include_flake {
-        files.push((
-            "flake.nix",
-            include_str!("../../templates/common/flake.nix"),
-        ));
+        files.extend([
+            (
+                "flake.nix",
+                include_str!("../../templates/common/flake.nix"),
+            ),
+            (
+                ".github/workflows/ci.yml",
+                include_str!("../../templates/common/ci.yml"),
+            ),
+        ]);
     }
 
     Some(files)

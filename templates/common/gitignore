@@ -6,3 +6,4 @@ out/
 *.log
 .idea/
 .vscode/
+.pre-commit-config.yaml

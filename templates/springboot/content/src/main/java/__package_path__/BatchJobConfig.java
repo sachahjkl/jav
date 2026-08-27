@@ -12,17 +12,15 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
 public class BatchJobConfig {
-    @Bean
-    Job sampleJob(JobRepository jobRepository, Step sampleStep) {
-        return new JobBuilder("sampleJob", jobRepository)
-            .start(sampleStep)
-            .build();
-    }
+  @Bean
+  Job sampleJob(JobRepository jobRepository, Step sampleStep) {
+    return new JobBuilder("sampleJob", jobRepository).start(sampleStep).build();
+  }
 
-    @Bean
-    Step sampleStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
-        return new StepBuilder("sampleStep", jobRepository)
-            .tasklet((contribution, chunkContext) -> RepeatStatus.FINISHED, transactionManager)
-            .build();
-    }
+  @Bean
+  Step sampleStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+    return new StepBuilder("sampleStep", jobRepository)
+        .tasklet((contribution, chunkContext) -> RepeatStatus.FINISHED, transactionManager)
+        .build();
+  }
 }

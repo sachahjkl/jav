@@ -14,10 +14,13 @@ With Nix:
 
 ```bash
 nix develop
+nix flake check
 nix run .#build
 nix run .#test
 nix run .#run
 ```
+
+The development shell installs `prek` hooks for Nix and Java formatting. GitHub Actions runs the flake checks and Java tests.
 
 Commit `flake.lock` after the first Nix command if you want the development environment pinned exactly.
 

@@ -7,7 +7,7 @@ RELEASE_BASE_URL="${RELEASE_BASE_URL:-}"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_path="$repo_root/$OUTPUT"
-VERSION="${VERSION:-$(perl -nle 'print $1 if /^version = "([^"]+)"$/' "$repo_root/Cargo.toml")}" 
+VERSION="${VERSION:-$(perl -nle 'print $1 if /^version = "([^"]+)"$/' "$repo_root/Cargo.toml")}"
 
 cargo build --release --locked
 

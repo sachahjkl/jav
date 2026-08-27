@@ -2,6 +2,7 @@
 /result
 artifacts/
 /.direnv/
+.pre-commit-config.yaml
 .env
 .env.*
 !.env.example

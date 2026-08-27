@@ -33,6 +33,9 @@ jobs:
       - name: Check flake
         uses: DeterminateSystems/flake-checker-action@main
 
+      - name: Run flake checks
+        run: nix flake check
+
       - name: Build Nix package
         run: nix build .#default
 

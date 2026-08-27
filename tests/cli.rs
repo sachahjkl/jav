@@ -53,6 +53,12 @@ fn new_console_creates_maven_project() {
         .child(".gitignore")
         .assert(predicate::path::exists());
     project.child("flake.nix").assert(predicate::path::exists());
+    project
+        .child(".github/workflows/ci.yml")
+        .assert(predicate::path::exists());
+    project
+        .child("flake.nix")
+        .assert(predicate::str::contains("package = pkgs.prek"));
     project.child("jav.toml").assert(predicate::path::exists());
     project
         .child("src/main/java/dev/example/demo/Main.java")
@@ -84,6 +90,9 @@ fn new_can_skip_flake_generation() {
 
     project
         .child("flake.nix")
+        .assert(predicate::path::missing());
+    project
+        .child(".github/workflows/ci.yml")
         .assert(predicate::path::missing());
     project.child("pom.xml").assert(predicate::path::exists());
 }

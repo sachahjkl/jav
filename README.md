@@ -34,7 +34,7 @@ Build and run support `debug` and `release` configurations. For generated projec
 
 Generated runnable projects include a `jav.toml` file for run defaults such as main class and Maven/Gradle task. Edit it when a project needs a custom run shape.
 
-Projects also generate a `flake.nix` by default for a pinned Java/build-tool environment. Use `--no-flake` if you do not want Nix files.
+Projects also generate a `flake.nix` and GitHub Actions workflow by default. The flake provides pinned tools, `prek` hooks, format checks, and build, test, and run apps. Use `--no-flake` if you do not want these files.
 
 ## Templates
 

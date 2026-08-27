@@ -6,23 +6,20 @@ import jakarta.persistence.Id;
 
 @Entity
 public class Customer {
-    @Id
-    @GeneratedValue
-    private Long id;
-    private String name;
+  @Id @GeneratedValue private Long id;
+  private String name;
 
-    protected Customer() {
-    }
+  protected Customer() {}
 
-    public Customer(String name) {
-        this.name = name;
-    }
+  public Customer(String name) {
+    this.name = name;
+  }
 
-    public Long getId() {
-        return id;
-    }
+  public Long getId() {
+    return id;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public String getName() {
+    return name;
+  }
 }
