@@ -1,0 +1,11 @@
+name: "jav"
+description: "A modern CLI for Java projects"
+topics:
+  - "cli"
+  - "developer-tools"
+  - "java"
+homepage: ""
+source:
+  provider: github
+  namespace: "sachahjkl"
+  path: "sachahjkl/jav"
