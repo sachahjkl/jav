@@ -1,3 +1,5 @@
+[English](README.md) | [Français](README.fr.md)
+
 # jav
 
 `jav` is a modern CLI for Java projects. It creates projects from templates, detects Maven/Gradle/simple Java layouts, and gives you one command shape for `new`, `build`, `test`, `run`, `clean`, `doctor`, and `upgrade`.
