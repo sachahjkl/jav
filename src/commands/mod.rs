@@ -1,7 +1,10 @@
 pub mod build;
 pub mod clean;
 pub mod doctor;
+pub mod init;
 pub mod new;
 pub mod run;
+mod simple;
 pub mod test;
 pub mod upgrade;
+pub mod watch;

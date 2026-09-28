@@ -66,6 +66,9 @@ jobs:
       - name: Smoke test with Nix
         run: nix run .#check
 
+      - name: Build and test generated projects
+        run: nix develop -c cargo test --locked --test templates -- --ignored --test-threads=1
+
       - name: Publish linux-x64
         run: nix develop -c env COMMIT=${{ github.sha }} RELEASE_BASE_URL="https://github.com/${{ github.repository }}/releases/download/${{ needs.version.outputs.tag }}" bash ./scripts/publish-linux-x64.sh
 

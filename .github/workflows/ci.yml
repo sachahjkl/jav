@@ -56,6 +56,32 @@ jobs:
             artifacts/jav-linux-x64.tar.gz
             artifacts/linux-x64/release.json
 
+  templates:
+    name: Generated Maven and Gradle projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Cache Java dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gradle/caches
+          key: java-templates-${{ runner.os }}-${{ hashFiles('flake.lock', 'templates/**') }}
+          restore-keys: java-templates-${{ runner.os }}-
+
+      - name: Build and test generated projects
+        run: nix develop -c cargo test --locked --test templates -- --ignored --test-threads=1
+
   windows:
     name: Windows build and tests
     runs-on: windows-latest

@@ -14,7 +14,7 @@ if [[ $# -eq 0 ]]; then
   base="${year}.${month_day}"
   build_id=1
   while IFS= read -r tag; do
-    suffix="${tag#v${base}.}"
+    suffix="${tag#v"${base}".}"
     if [[ "$suffix" =~ ^[0-9]+$ && "$suffix" -ge "$build_id" ]]; then
       build_id="$((suffix + 1))"
     fi

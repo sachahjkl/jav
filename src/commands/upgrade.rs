@@ -1,5 +1,4 @@
 use anyhow::{anyhow, bail, Context, Result};
-use std::fs;
 
 use crate::cli::UpgradeArgs;
 use crate::output;
@@ -19,6 +18,11 @@ pub fn run(args: UpgradeArgs) -> Result<()> {
         for line in upgrade::release_summary(&manifest) {
             output::status("release", line);
         }
+        return Ok(());
+    }
+
+    if !upgrade::is_newer_version(upgrade::current_version(), &manifest.version)? {
+        output::status("current", "no newer release available");
         return Ok(());
     }
 
@@ -46,24 +50,9 @@ pub fn run(args: UpgradeArgs) -> Result<()> {
         .bytes()
         .context("failed to read release asset")?;
 
-    let download = std::env::temp_dir().join(&asset.file_name);
-    fs::write(&download, &bytes)
-        .with_context(|| format!("failed to write {}", download.display()))?;
-
-    let hash = upgrade::sha256_file(&download)?;
-    if !hash.eq_ignore_ascii_case(&asset.sha256) {
-        fs::remove_file(&download).ok();
-        bail!(
-            "invalid SHA256 for {}: expected {}, got {}",
-            asset.file_name,
-            asset.sha256,
-            hash
-        );
-    }
-
-    let replacement = upgrade::prepare_replacement(&asset.file_name, &bytes)?;
-    fs::remove_file(&download).ok();
-    upgrade::replace_executable(&executable, &replacement)?;
+    upgrade::verify_checksum(&bytes, &asset.sha256)?;
+    let replacement = upgrade::prepare_replacement(&executable, &asset.file_name, &bytes)?;
+    upgrade::replace_executable(&executable, replacement)?;
 
     output::status(
         "upgraded",

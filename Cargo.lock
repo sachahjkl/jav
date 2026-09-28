@@ -176,6 +176,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "block2"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5"
+dependencies = [
+ "objc2",
+]
+
+[[package]]
 name = "bstr"
 version = "1.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -197,12 +206,6 @@ name = "bytes"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ae3f5d315924270530207e2a68396c3cc547f6dca3fbdca317cfb1a51edb593"
-
-[[package]]
-name = "camino"
-version = "1.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4ce8d3bd5823c7504d3f579f13e7b2f3da252fcb938c594d5680ee508bf846f"
 
 [[package]]
 name = "cc"
@@ -432,6 +435,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0b1fab2ae45819af2d0731d60f2afe17227ebb1a1538a236da84c93e9a60162"
+dependencies = [
+ "dispatch2",
+ "nix",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "deunicode"
 version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -474,6 +488,18 @@ dependencies = [
  "block-buffer 0.12.1",
  "const-oid",
  "crypto-common 0.2.2",
+]
+
+[[package]]
+name = "dispatch2"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38"
+dependencies = [
+ "bitflags",
+ "block2",
+ "libc",
+ "objc2",
 ]
 
 [[package]]
@@ -974,19 +1000,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indicatif"
-version = "0.18.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25470f23803092da7d239834776d653104d551bc4d7eacaf31e6837854b8e9eb"
-dependencies = [
- "console",
- "portable-atomic",
- "unicode-width",
- "unit-prefix",
- "web-time",
-]
-
-[[package]]
 name = "ipnet"
 version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1006,27 +1019,27 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jav"
-version = "2026.624.1"
+version = "2026.928.1"
 dependencies = [
  "anstream",
  "anyhow",
  "assert_cmd",
  "assert_fs",
- "camino",
  "clap",
  "console",
+ "ctrlc",
  "dialoguer",
  "flate2",
- "indicatif",
+ "libc",
  "predicates",
  "reqwest",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.11.0",
  "tar",
  "tempfile",
  "tera",
- "thiserror",
  "toml",
  "zip",
 ]
@@ -1171,6 +1184,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.31.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf20d2fde8ff38632c426f1165ed7436270b44f199fc55284c38276f9db47c3d"
+dependencies = [
+ "bitflags",
+ "cfg-if",
+ "cfg_aliases",
+ "libc",
+]
+
+[[package]]
 name = "normalize-line-endings"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1184,6 +1209,21 @@ checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
 ]
+
+[[package]]
+name = "objc2"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a12a8ed07aefc768292f076dc3ac8c48f3781c8f2d5851dd3d98950e8c5a89f"
+dependencies = [
+ "objc2-encode",
+]
+
+[[package]]
+name = "objc2-encode"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef25abbcd74fb2609453eb695bd2f860d389e457f67dc17cafc8b8cbc89d0c33"
 
 [[package]]
 name = "once_cell"
@@ -1304,12 +1344,6 @@ name = "pin-project-lite"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a89322df9ebe1c1578d689c92318e070967d1042b512afbe49518723f4e6d5cd"
-
-[[package]]
-name = "portable-atomic"
-version = "1.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c33a9471896f1c69cecef8d20cbe2f7accd12527ce60845ff44c153bb2a21b49"
 
 [[package]]
 name = "potential_utf"
@@ -2202,12 +2236,6 @@ name = "unicode-width"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
-
-[[package]]
-name = "unit-prefix"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
 
 [[package]]
 name = "untrusted"

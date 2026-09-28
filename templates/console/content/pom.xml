@@ -11,6 +11,7 @@
     <maven.compiler.release>{{ java_version }}</maven.compiler.release>
     <jav.configuration>debug</jav.configuration>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.outputTimestamp>1980-01-01T00:00:02Z</project.build.outputTimestamp>
   </properties>
 
   <profiles>
@@ -20,14 +21,27 @@
         <activeByDefault>true</activeByDefault>
       </activation>
       <properties>
+        <jav.configuration>debug</jav.configuration>
         <maven.compiler.debug>true</maven.compiler.debug>
       </properties>
     </profile>
     <profile>
       <id>release</id>
       <properties>
+        <jav.configuration>release</jav.configuration>
         <maven.compiler.debug>false</maven.compiler.debug>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <configuration>
+              <compilerArgs><arg>-g:none</arg></compilerArgs>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
 
@@ -41,7 +55,13 @@
   </dependencies>
 
   <build>
+    <directory>target/${jav.configuration}</directory>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.14.0</version>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>

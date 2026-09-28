@@ -32,6 +32,14 @@ dependencies {
     runtimeOnly("{{ dependency }}")
     {% endfor %}
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    {% if spring_has_data_jpa or spring_has_batch %}
+    {% if spring_has_postgresql %}
+    testRuntimeOnly("com.h2database:h2")
+    {% else %}
+    runtimeOnly("com.h2database:h2")
+    {% endif %}
+    {% endif %}
 }
 
 tasks.test {
@@ -44,4 +52,9 @@ application {
 
 tasks.withType<JavaCompile>().configureEach {
     options.isDebug = javConfiguration.map { it != "release" }.get()
+}
+
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
 }

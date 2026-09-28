@@ -7,7 +7,7 @@ use crate::templates::{feature, manifest, manifests, render, TemplateContext, Te
 use crate::ui;
 
 const SUPPORTED_BUILD_TOOLS: &[&str] = &["maven", "gradle"];
-pub fn run(args: NewArgs) -> Result<()> {
+pub fn run(args: NewArgs, verbose: bool, dry_run: bool) -> Result<()> {
     let template = match args.template {
         Some(template) => template,
         None => {
@@ -17,7 +17,7 @@ pub fn run(args: NewArgs) -> Result<()> {
     };
 
     if template == "list" {
-        print_templates(args.verbose);
+        print_templates(verbose);
         return Ok(());
     }
 
@@ -47,6 +47,7 @@ pub fn run(args: NewArgs) -> Result<()> {
     };
 
     validate_package_name(&package_name)?;
+    validate_versions(&args.java_version, &args.spring_boot_version)?;
     validate_template_options(&template_manifest, &args.features)?;
 
     let spring_features = resolve_features(&template_manifest, &args.features);
@@ -56,6 +57,13 @@ pub fn run(args: NewArgs) -> Result<()> {
         .unwrap_or_else(|| "Main".to_string());
 
     let destination = PathBuf::from(args.output.unwrap_or_else(|| name.clone()));
+    if destination.symlink_metadata().is_ok() {
+        bail!("destination already exists: {}", destination.display());
+    }
+    if dry_run {
+        output::status("planned", destination.display().to_string());
+        return Ok(());
+    }
     let context = TemplateContext {
         project_name: name,
         package_path: package_name.replace('.', "/"),
@@ -76,7 +84,13 @@ pub fn run(args: NewArgs) -> Result<()> {
     })?;
 
     output::status("created", destination.display().to_string());
-    output::status("next", format!("cd {} && jav run", destination.display()));
+    let command = if matches!(template_manifest.id.as_str(), "library" | "junit") {
+        "jav test"
+    } else {
+        "jav run"
+    };
+    let quoted = destination.to_string_lossy().replace('\'', "'\\''");
+    output::status("next", format!("cd '{quoted}' && {command}"));
     Ok(())
 }
 
@@ -180,6 +194,13 @@ fn default_package(name: &str) -> String {
         .collect::<String>()
         .split('.')
         .filter(|part| !part.is_empty())
+        .map(|part| {
+            if validate_package_name(part).is_ok() {
+                part.to_string()
+            } else {
+                format!("_{part}")
+            }
+        })
         .collect::<Vec<_>>()
         .join(".");
 
@@ -187,12 +208,13 @@ fn default_package(name: &str) -> String {
 }
 
 fn validate_project_name(name: &str) -> Result<()> {
-    if name.trim().is_empty() {
-        bail!("project name cannot be empty");
-    }
-
-    if name.contains('/') || name.contains('\\') {
-        bail!("project name cannot contain path separators");
+    if name.is_empty()
+        || !name.as_bytes()[0].is_ascii_alphanumeric()
+        || !name
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'-' | b'_'))
+    {
+        bail!("project name must start with a letter or digit and contain only ASCII letters, digits, hyphens or underscores");
     }
 
     Ok(())
@@ -206,6 +228,9 @@ fn validate_package_name(package_name: &str) -> Result<()> {
     }
 
     for part in parts {
+        if JAVA_RESERVED.contains(&part) {
+            bail!("package segment '{part}' is reserved by Java");
+        }
         let mut chars = part.chars();
         let Some(first) = chars.next() else {
             bail!("package name cannot contain empty segments");
@@ -220,6 +245,81 @@ fn validate_package_name(package_name: &str) -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+const JAVA_RESERVED: &[&str] = &[
+    "abstract",
+    "assert",
+    "boolean",
+    "break",
+    "byte",
+    "case",
+    "catch",
+    "char",
+    "class",
+    "const",
+    "continue",
+    "default",
+    "do",
+    "double",
+    "else",
+    "enum",
+    "extends",
+    "final",
+    "finally",
+    "float",
+    "for",
+    "goto",
+    "if",
+    "implements",
+    "import",
+    "instanceof",
+    "int",
+    "interface",
+    "long",
+    "native",
+    "new",
+    "package",
+    "private",
+    "protected",
+    "public",
+    "return",
+    "short",
+    "static",
+    "strictfp",
+    "super",
+    "switch",
+    "synchronized",
+    "this",
+    "throw",
+    "throws",
+    "transient",
+    "try",
+    "void",
+    "volatile",
+    "while",
+    "true",
+    "false",
+    "null",
+    "_",
+];
+
+fn validate_versions(java: &str, spring: &str) -> Result<()> {
+    if !["17", "21"].contains(&java) {
+        bail!("unsupported Java version '{java}'; expected 17 or 21");
+    }
+    let parts: Vec<_> = spring.split('.').collect();
+    if parts.len() != 3
+        || parts
+            .iter()
+            .any(|part| part.is_empty() || !part.bytes().all(|c| c.is_ascii_digit()))
+    {
+        bail!("Spring Boot version must contain three numeric components (for example 3.5.7)");
+    }
+    if parts[0] != "3" {
+        bail!("these templates support Spring Boot 3.x");
+    }
     Ok(())
 }
 
@@ -282,6 +382,16 @@ mod tests {
         assert!(validate_package_name("dev.example.demo").is_ok());
         assert!(validate_package_name("dev..demo").is_err());
         assert!(validate_package_name("dev.1demo").is_err());
+        assert!(validate_package_name("dev.class").is_err());
+        assert!(validate_package_name("dev._").is_err());
+    }
+
+    #[test]
+    fn default_packages_are_valid() {
+        for name in ["123-demo", "class", "true-null", "APP", "app__123"] {
+            assert!(validate_project_name(name).is_ok());
+            assert!(validate_package_name(&default_package(name)).is_ok());
+        }
     }
 
     #[test]

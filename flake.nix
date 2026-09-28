@@ -30,7 +30,12 @@
         pkgs = import nixpkgs {inherit system;};
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
         version = cargoToml.package.version;
-        src = pkgs.lib.cleanSource ./.;
+        src = pkgs.lib.cleanSourceWith {
+          src = ./.;
+          filter = path: type:
+            !(builtins.elem (baseNameOf path) ["target" ".direnv"])
+            && pkgs.lib.cleanSourceFilter path type;
+        };
         sourceRevision =
           self.shortRev
             or (
@@ -95,6 +100,11 @@
           pname = "jav";
           inherit version src;
           cargoLock.lockFile = ./Cargo.lock;
+          __darwinAllowLocalNetworking = true;
+          nativeCheckInputs = [pkgs.jdk21_headless pkgs.gradle];
+          postCheck = ''
+            cargo test --release --locked --offline --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget} --test commands -- --ignored
+          '';
         };
 
         clippyCheck = pkgs.rustPlatform.buildRustPackage {
@@ -128,10 +138,22 @@
 
         preCommitCheck = git-hooks.lib.${system}.run {
           package = pkgs.prek;
-          src = ./.;
+          inherit src;
           hooks = {
             check-added-large-files.enable = true;
             check-merge-conflicts.enable = true;
+            check-toml = {
+              enable = true;
+              excludes = ["^templates/common/"];
+            };
+            check-yaml = {
+              enable = true;
+              excludes = ["^templates/"];
+            };
+            shellcheck = {
+              enable = true;
+              excludes = ["^templates/"];
+            };
             alejandra = {
               enable = true;
               excludes = ["^templates/common/flake\\.nix$"];
@@ -154,6 +176,7 @@
 
         checks = {
           build = package;
+          native-java = package;
           clippy = clippyCheck;
           format = formatCheck;
           pre-commit = preCommitCheck;

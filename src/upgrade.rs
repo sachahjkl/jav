@@ -6,10 +6,11 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::env;
 use std::fs;
-use std::fs::File;
-use std::io::{self, Cursor, Read};
+use std::io::{self, Cursor, Write};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tar::Archive;
+use tempfile::NamedTempFile;
 use zip::ZipArchive;
 
 use crate::version::APP_VERSION;
@@ -160,41 +161,63 @@ pub fn build_client() -> Result<Client> {
 
     Client::builder()
         .default_headers(headers)
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(120))
         .build()
         .context("failed to build HTTP client")
 }
 
-pub fn sha256_file(path: &Path) -> Result<String> {
-    let mut file =
-        File::open(path).with_context(|| format!("failed to open {}", path.display()))?;
-    let mut hasher = Sha256::new();
-    let mut buffer = [0_u8; 8192];
-
-    loop {
-        let count = file.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        hasher.update(&buffer[..count]);
+pub fn verify_checksum(bytes: &[u8], expected: &str) -> Result<()> {
+    if expected.len() != 64 || !expected.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        bail!("invalid SHA256 in release manifest");
     }
-
-    let digest = hasher.finalize();
-    Ok(digest.iter().map(|byte| format!("{byte:02x}")).collect())
+    let hash: String = Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    if !hash.eq_ignore_ascii_case(expected) {
+        bail!("invalid SHA256: expected {expected}, got {hash}");
+    }
+    Ok(())
 }
 
-pub fn prepare_replacement(asset_name: &str, archive_bytes: &[u8]) -> Result<PathBuf> {
+pub fn is_newer_version(current: &str, available: &str) -> Result<bool> {
+    let current = semver::Version::parse(current).context("invalid current version")?;
+    let available = semver::Version::parse(available).context("invalid release version")?;
+    Ok(available.cmp_precedence(&current).is_gt())
+}
+
+pub fn prepare_replacement(
+    current: &Path,
+    asset_name: &str,
+    archive_bytes: &[u8],
+) -> Result<NamedTempFile> {
+    let directory = current
+        .parent()
+        .context("executable has no parent directory")?;
+    let mut file = tempfile::Builder::new()
+        .prefix(".jav-upgrade-")
+        .tempfile_in(directory)
+        .context("failed to create replacement beside executable")?;
     if asset_name.ends_with(".zip") {
-        extract_zip_binary(archive_bytes)
+        extract_zip_binary(archive_bytes, file.as_file_mut())?;
     } else if asset_name.ends_with(".tar.gz") || asset_name.ends_with(".tgz") {
-        extract_tar_gz_binary(archive_bytes)
+        extract_tar_gz_binary(archive_bytes, file.as_file_mut())?;
     } else {
-        let path = unique_temp_path(asset_name);
-        fs::write(&path, archive_bytes)?;
-        Ok(path)
+        file.write_all(archive_bytes)?;
     }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = fs::metadata(current)?.permissions().mode() & 0o777;
+        file.as_file()
+            .set_permissions(fs::Permissions::from_mode(mode))?;
+    }
+    file.as_file().sync_all()?;
+    Ok(file)
 }
 
-fn extract_zip_binary(archive_bytes: &[u8]) -> Result<PathBuf> {
+fn extract_zip_binary(archive_bytes: &[u8], file: &mut fs::File) -> Result<()> {
     let reader = Cursor::new(archive_bytes);
     let mut archive = ZipArchive::new(reader).context("invalid zip release asset")?;
 
@@ -204,18 +227,16 @@ fn extract_zip_binary(archive_bytes: &[u8]) -> Result<PathBuf> {
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or_default();
-        if name.eq_ignore_ascii_case("jav.exe") || name == "jav" {
-            let path = unique_temp_path(name);
-            let mut file = File::create(&path)?;
-            io::copy(&mut entry, &mut file)?;
-            return Ok(path);
+        if (name.eq_ignore_ascii_case("jav.exe") || name == "jav") && entry.is_file() {
+            io::copy(&mut entry, file)?;
+            return Ok(());
         }
     }
 
     bail!("archive is missing jav executable")
 }
 
-fn extract_tar_gz_binary(archive_bytes: &[u8]) -> Result<PathBuf> {
+fn extract_tar_gz_binary(archive_bytes: &[u8], file: &mut fs::File) -> Result<()> {
     let reader = Cursor::new(archive_bytes);
     let decoder = GzDecoder::new(reader);
     let mut archive = Archive::new(decoder);
@@ -227,51 +248,48 @@ fn extract_tar_gz_binary(archive_bytes: &[u8]) -> Result<PathBuf> {
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or_default();
-        if name == "jav" || name.eq_ignore_ascii_case("jav.exe") {
-            let temp = unique_temp_path(name);
-            let mut file = File::create(&temp)?;
-            io::copy(&mut entry, &mut file)?;
-            return Ok(temp);
+        if (name == "jav" || name.eq_ignore_ascii_case("jav.exe"))
+            && entry.header().entry_type().is_file()
+        {
+            io::copy(&mut entry, file)?;
+            return Ok(());
         }
     }
 
     bail!("archive is missing jav executable")
 }
 
-fn unique_temp_path(name: &str) -> PathBuf {
-    let file_name = format!("jav-upgrade-{}-{name}", std::process::id());
-    env::temp_dir().join(file_name)
-}
-
-pub fn replace_executable(current: &Path, replacement: &Path) -> Result<()> {
+pub fn replace_executable(current: &Path, replacement: NamedTempFile) -> Result<()> {
     #[cfg(target_os = "windows")]
     {
-        let backup = current.with_extension("exe.bak");
-        let script = current.with_extension("upgrade.cmd");
+        let directory = tempfile::Builder::new()
+            .prefix(".jav-upgrade-script-")
+            .tempdir_in(
+                current
+                    .parent()
+                    .context("executable has no parent directory")?,
+            )?;
+        let backup = directory.path().join("backup.exe");
+        let script = directory.path().join("upgrade.cmd");
+        let replacement = replacement.into_temp_path();
         let script_body =
-            windows_replacement_script(replacement, current, &backup, std::process::id());
+            windows_replacement_script(&replacement, current, &backup, std::process::id());
         fs::write(&script, script_body)
             .with_context(|| format!("failed to write {}", script.display()))?;
         std::process::Command::new("cmd")
             .args(["/C", script.to_string_lossy().as_ref()])
             .spawn()
             .context("failed to launch Windows replacement script")?;
+        replacement.keep()?;
+        directory.keep();
         return Ok(());
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        fs::copy(replacement, current)
+        replacement
+            .persist(current)
             .with_context(|| format!("failed to replace {}", current.display()))?;
-        let metadata = fs::metadata(current)?;
-        let mut permissions = metadata.permissions();
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            permissions.set_mode(0o755);
-            fs::set_permissions(current, permissions)?;
-        }
-        fs::remove_file(replacement).ok();
         Ok(())
     }
 }
@@ -284,12 +302,37 @@ fn windows_replacement_script(
     pid: u32,
 ) -> String {
     format!(
-        "@echo off\r\nsetlocal\r\nset \"NEW={}\"\r\nset \"TARGET={}\"\r\nset \"BACKUP={}\"\r\nset \"PID={}\"\r\n:wait\r\ntasklist /FI \"PID eq %PID%\" 2>nul | find \"%PID%\" >nul\r\nif not errorlevel 1 (\r\n  timeout /t 1 /nobreak >nul\r\n  goto wait\r\n)\r\nif not exist \"%NEW%\" exit /b 1\r\nif exist \"%BACKUP%\" del /f /q \"%BACKUP%\" >nul 2>nul\r\nif exist \"%TARGET%\" move /Y \"%TARGET%\" \"%BACKUP%\" >nul\r\ncopy /Y \"%NEW%\" \"%TARGET%\" >nul\r\nif errorlevel 1 (\r\n  if exist \"%BACKUP%\" move /Y \"%BACKUP%\" \"%TARGET%\" >nul\r\n  exit /b 1\r\n)\r\ndel /f /q \"%NEW%\" >nul 2>nul\r\ndel /f /q \"%BACKUP%\" >nul 2>nul\r\ndel /f /q \"%~f0\" >nul 2>nul\r\n",
+        r#"@echo off
+setlocal
+set "NEW={}"
+set "TARGET={}"
+set "BACKUP={}"
+set "PID={}"
+:wait
+tasklist /FI "PID eq %PID%" 2>nul | find "%PID%" >nul
+if not errorlevel 1 (
+  timeout /t 1 /nobreak >nul
+  goto wait
+)
+if not exist "%NEW%" goto cleanup
+move /Y "%TARGET%" "%BACKUP%" >nul
+if errorlevel 1 goto cleanup
+move /Y "%NEW%" "%TARGET%" >nul
+if errorlevel 1 (
+  move /Y "%BACKUP%" "%TARGET%" >nul
+  if errorlevel 1 exit /b 1
+)
+:cleanup
+del /f /q "%NEW%" >nul 2>nul
+del /f /q "%BACKUP%" >nul 2>nul
+del /f /q "%~f0" >nul 2>nul & rmdir "%~dp0" >nul 2>nul
+"#,
         replacement.display(),
         current.display(),
         backup.display(),
         pid
     )
+    .replace('\n', "\r\n")
 }
 
 pub fn release_summary(manifest: &ReleaseManifest) -> Vec<String> {
@@ -308,4 +351,211 @@ pub fn release_summary(manifest: &ReleaseManifest) -> Vec<String> {
 
 pub fn current_version() -> &'static str {
     APP_VERSION
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nix_store_installations_are_rejected() {
+        let error = ensure_supported_host(Path::new("/nix/store/hash-jav/bin/jav")).unwrap_err();
+        assert!(error.to_string().contains("Nix-managed install"));
+        assert!(ensure_supported_host(Path::new("/home/user/.local/bin/jav")).is_ok());
+    }
+
+    #[test]
+    fn only_newer_versions_are_selected() {
+        for (current, available, expected) in [
+            ("2026.624.1", "2026.624.2", true),
+            ("2026.624.1", "2026.624.1", false),
+            ("2026.624.1", "2026.623.9", false),
+            ("1.9.0", "1.10.0", true),
+            ("1.0.0", "1.0.0-rc.1", false),
+            ("1.0.0-rc.1", "1.0.0", true),
+            ("1.0.0+old", "1.0.0+new", false),
+        ] {
+            assert_eq!(is_newer_version(current, available).unwrap(), expected);
+        }
+        assert!(is_newer_version("1.0.0", "invalid").is_err());
+        assert!(is_newer_version("invalid", "1.0.0").is_err());
+    }
+
+    #[test]
+    fn checksum_rejects_corruption_and_invalid_manifest_values() {
+        let expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+        assert!(verify_checksum(b"abc", expected).is_ok());
+        assert!(verify_checksum(b"abc", &expected.to_uppercase()).is_ok());
+        assert!(verify_checksum(b"abd", expected).is_err());
+        assert!(verify_checksum(b"abc", "").is_err());
+        assert!(verify_checksum(b"abc", &"z".repeat(64)).is_err());
+    }
+
+    #[test]
+    fn replacement_files_are_unique_and_cleaned_up() {
+        let directory = tempfile::tempdir().unwrap();
+        let current = directory.path().join("jav");
+        fs::write(&current, b"old").unwrap();
+        let first = prepare_replacement(&current, "../../jav", b"first").unwrap();
+        let second = prepare_replacement(&current, "../../jav", b"second").unwrap();
+        assert_ne!(first.path(), second.path());
+        assert_eq!(first.path().parent(), Some(directory.path()));
+        assert_eq!(fs::read(first.path()).unwrap(), b"first");
+        let first_path = first.path().to_owned();
+        let second_path = second.path().to_owned();
+        drop(first);
+        drop(second);
+        assert!(!first_path.exists());
+        assert!(!second_path.exists());
+        assert!(prepare_replacement(&current, "jav.tar.gz", b"invalid").is_err());
+        assert!(prepare_replacement(&current, "jav.zip", b"invalid").is_err());
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+        assert_eq!(fs::read(current).unwrap(), b"old");
+    }
+
+    #[test]
+    fn extracts_binary_from_supported_archives() {
+        let directory = tempfile::tempdir().unwrap();
+        let current = directory.path().join("jav");
+        fs::write(&current, b"old").unwrap();
+        let payload = b"replacement executable";
+
+        let encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        let mut tar = tar::Builder::new(encoder);
+        let mut header = tar::Header::new_gnu();
+        header.set_size(payload.len() as u64);
+        header.set_mode(0o755);
+        header.set_cksum();
+        tar.append_data(&mut header, "bin/jav", payload.as_slice())
+            .unwrap();
+        let tar_bytes = tar.into_inner().unwrap().finish().unwrap();
+
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        zip.start_file("bin/jav.exe", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(payload).unwrap();
+        let zip_bytes = zip.finish().unwrap().into_inner();
+
+        for (name, bytes) in [("release.tar.gz", tar_bytes), ("release.zip", zip_bytes)] {
+            let replacement = prepare_replacement(&current, name, &bytes).unwrap();
+            assert_eq!(fs::read(replacement.path()).unwrap(), payload);
+        }
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn archive_without_binary_leaves_no_temporary_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let current = directory.path().join("jav");
+        fs::write(&current, b"old").unwrap();
+        let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        zip.start_file("README", zip::write::SimpleFileOptions::default())
+            .unwrap();
+        zip.write_all(b"readme").unwrap();
+        let bytes = zip.finish().unwrap().into_inner();
+        let error = prepare_replacement(&current, "release.zip", &bytes).unwrap_err();
+        assert!(error.to_string().contains("missing jav executable"));
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn replacement_preserves_access_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let directory = tempfile::tempdir().unwrap();
+        let current = directory.path().join("jav");
+        fs::write(&current, b"old").unwrap();
+        fs::set_permissions(&current, fs::Permissions::from_mode(0o750)).unwrap();
+        let replacement = prepare_replacement(&current, "jav", b"new").unwrap();
+        replace_executable(&current, replacement).unwrap();
+        assert_eq!(
+            fs::metadata(&current).unwrap().permissions().mode() & 0o7777,
+            0o750
+        );
+        assert_eq!(fs::read(&current).unwrap(), b"new");
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn failed_replacement_cleans_up_prepared_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let current = directory.path().join("jav");
+        fs::write(&current, b"old").unwrap();
+        let replacement = prepare_replacement(&current, "jav", b"new").unwrap();
+        let temporary = replacement.path().to_owned();
+        let target = directory.path().join("directory");
+        fs::create_dir(&target).unwrap();
+        assert!(replace_executable(&target, replacement).is_err());
+        assert!(!temporary.exists());
+        assert_eq!(fs::read(current).unwrap(), b"old");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "child process fixture for active executable replacement"]
+    fn active_executable_fixture() {
+        let Some(ready) = env::var_os("JAV_TEST_UPGRADE_READY") else {
+            return;
+        };
+        fs::write(ready, b"ready").unwrap();
+        std::thread::sleep(Duration::from_secs(60));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn replaces_active_linux_executable_atomically() {
+        use std::os::unix::fs::MetadataExt;
+        use std::process::{Child, Command, Stdio};
+        use std::time::Instant;
+
+        struct RunningFixture(Child);
+        impl Drop for RunningFixture {
+            fn drop(&mut self) {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+
+        let directory = tempfile::tempdir().unwrap();
+        let current = directory.path().join("jav");
+        fs::copy(env::current_exe().unwrap(), &current).unwrap();
+        let original_inode = fs::metadata(&current).unwrap().ino();
+        let ready = directory.path().join("ready");
+        let mut fixture = RunningFixture(
+            Command::new(&current)
+                .args([
+                    "--exact",
+                    "upgrade::tests::active_executable_fixture",
+                    "--ignored",
+                ])
+                .env("JAV_TEST_UPGRADE_READY", &ready)
+                .stdout(Stdio::null())
+                .spawn()
+                .unwrap(),
+        );
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while !ready.exists() {
+            assert!(
+                fixture.0.try_wait().unwrap().is_none(),
+                "fixture exited before ready"
+            );
+            assert!(Instant::now() < deadline, "fixture did not become ready");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert!(fs::OpenOptions::new().write(true).open(&current).is_err());
+        let replacement = prepare_replacement(&current, "jav", b"new executable").unwrap();
+        let temporary = replacement.path().to_owned();
+        replace_executable(&current, replacement).unwrap();
+        assert_eq!(fs::read(&current).unwrap(), b"new executable");
+        assert_ne!(fs::metadata(&current).unwrap().ino(), original_inode);
+        assert_eq!(
+            fs::metadata(format!("/proc/{}/exe", fixture.0.id()))
+                .unwrap()
+                .ino(),
+            original_inode
+        );
+        assert!(fixture.0.try_wait().unwrap().is_none());
+        assert!(!temporary.exists());
+    }
 }

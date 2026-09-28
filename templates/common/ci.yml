@@ -17,6 +17,3 @@ jobs:
 
       - name: Check flake
         run: nix flake check
-
-      - name: Test project
-        run: nix run .#test

@@ -1,10 +1,28 @@
-use anyhow::{bail, Result};
-use std::path::Path;
+use anyhow::{bail, Context, Result};
+use std::path::{Path, PathBuf};
 
 use crate::project::ProjectKind;
 
 pub fn detect_current() -> Result<ProjectKind> {
-    detect(std::env::current_dir()?)
+    detect(find_root(std::env::current_dir()?)?)
+}
+
+pub fn find_root(path: impl AsRef<Path>) -> Result<PathBuf> {
+    let path = path
+        .as_ref()
+        .canonicalize()
+        .with_context(|| format!("cannot resolve {}", path.as_ref().display()))?;
+    let start = if path.is_file() {
+        path.parent().unwrap_or(&path)
+    } else {
+        &path
+    };
+    for parent in start.ancestors() {
+        if detect(parent).is_ok() {
+            return Ok(parent.to_path_buf());
+        }
+    }
+    bail!("not in a Java project; expected pom.xml, build.gradle, or src/main/java")
 }
 
 pub fn detect(path: impl AsRef<Path>) -> Result<ProjectKind> {
@@ -33,6 +51,19 @@ pub fn detect(path: impl AsRef<Path>) -> Result<ProjectKind> {
 mod tests {
     use super::*;
     use assert_fs::prelude::*;
+
+    #[test]
+    fn finds_nearest_project_from_nested_directory() {
+        let temp = assert_fs::TempDir::new().unwrap();
+        temp.child("pom.xml").touch().unwrap();
+        temp.child("module/build.gradle").touch().unwrap();
+        temp.child("module/src/main/java").create_dir_all().unwrap();
+        assert_eq!(
+            find_root(temp.child("module/src/main/java").path()).unwrap(),
+            temp.child("module").path().canonicalize().unwrap()
+        );
+        assert!(detect(temp.child("module/src").path()).is_err());
+    }
 
     #[test]
     fn detects_maven_project() {

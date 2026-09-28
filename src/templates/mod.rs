@@ -302,12 +302,29 @@ pub fn files(
                 }
             }
 
+            if context.spring_features.iter().any(|feature| matches!(feature.as_str(), "data-jpa" | "batch")) {
+                files.push((
+                    "src/test/resources/application-test.properties",
+                    include_str!("../../templates/springboot/content/application-test.properties"),
+                ));
+            }
+
+            if context.spring_features.iter().any(|feature| feature == "postgresql") {
+                files.push(("compose.yaml", include_str!("../../templates/springboot/content/compose.yaml")));
+            }
+
             Some(files)
         }
         _ => None,
     }?;
 
     if context.include_flake {
+        if context.build_tool == "gradle" {
+            files.push((
+                "deps.json",
+                include_str!("../../templates/common/deps.json"),
+            ));
+        }
         files.extend([
             (
                 "flake.nix",

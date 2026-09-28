@@ -35,9 +35,9 @@ $ jav run -- hello world
 |---|---|
 | **One workflow** | Use the same commands across Maven, Gradle, and simple Java layouts. |
 | **Useful templates** | Start console, CLI, library, worker, JUnit, and Spring projects. |
-| **Project native** | Keep normal `pom.xml`, Gradle files, source layouts, and build outputs. |
+| **Project native** | Use project wrappers, normal `pom.xml` and Gradle files, and native build outputs. |
 | **Reproducible by default** | Generate a Nix flake, `prek` hooks, and GitHub Actions with new projects. |
-| **Fast feedback** | Build only when sources or project inputs are newer than existing outputs. |
+| **Incremental builds** | Let Maven and Gradle track their inputs. Track source, resource, configuration, and output changes for simple Java projects. |
 | **Self-contained releases** | Install native Linux or Windows binaries and upgrade them with `jav upgrade`. |
 
 ## Demo
@@ -60,8 +60,13 @@ cd HelloJav
 jav run
 ```
 
-`jav run` builds first when project inputs are newer than the output. Pass
-`--no-build` when you explicitly want to skip that check.
+`jav run` invokes Maven compilation or Gradle's run task dependencies before execution.
+For simple Java projects, it rebuilds when source contents, resources, configuration,
+or outputs change. Pass `--no-build` to skip this preparation.
+Native run tasks can still invoke their own build steps.
+
+Run commands from any project subdirectory. Use `-C PATH` to select another directory.
+`jav` uses the nearest project root and prefers its Maven or Gradle wrapper.
 
 Explore the installed templates:
 
@@ -112,11 +117,12 @@ Use Nix to update installations managed by Nix.
 | Command | Purpose |
 |---|---|
 | `jav new` | Create a project from an installed template. |
+| `jav init` | Add `jav.toml` to an existing Java project. |
 | `jav build` | Build the current project. |
 | `jav test` | Run the current project's tests. |
 | `jav run` | Build when necessary, then run the project. |
 | `jav clean` | Remove native build outputs. |
-| `jav doctor` | Inspect the available Java development tools. |
+| `jav doctor` | Inspect tool versions, wrapper selection, and JDK configuration. |
 | `jav upgrade` | Update a release-binary installation. |
 
 Common workflows:
@@ -126,11 +132,24 @@ jav build --configuration release
 jav run --configuration debug -- hello world
 jav run --no-build -- server --port 8080
 jav clean
+jav test --filter 'dev.example.*Test'
+jav -C ../service run --watch
+jav --dry-run build
+jav --verbose run
 ```
 
 Build and run support `debug` and `release` configurations. Generated Maven
 projects use profiles. Generated Gradle projects use the corresponding
 `jav.configuration` property.
+
+`--filter` uses the build tool's test selector syntax. Maven supports selectors such
+as `MainTest#method`. Gradle supports selectors such as `dev.example.MainTest.method`.
+
+`--dry-run` prints planned operations without changing project files or running tools.
+`--verbose` prints commands and build decisions. Child process exit codes are preserved.
+
+`jav run --watch` restarts the application when project inputs change, including deletions.
+Press Ctrl-C to stop the application and the watcher.
 
 ## Templates
 
@@ -167,12 +186,27 @@ Generated runnable projects include `jav.toml`:
 main_class = "dev.example.hello.Application"
 maven_task = "exec:java"
 gradle_task = "run"
+args = ["hello"]
 ```
 
-Edit these values when a project needs a custom main class or run task.
+Use `main_class` for simple Java projects and Maven run goals.
+Gradle uses the main class configured by its build script.
+Use `maven_task` or `gradle_task` to select a custom run task.
+Unknown configuration keys produce an error.
+Arguments after `jav run --` replace the configured default arguments.
+Maven `exec:java` rejects empty arguments because its native parser discards them.
+
+For an existing project, run `jav init` to create this file from detected project inputs.
+An existing `jav.toml` is never overwritten.
+
+Simple Java projects use `src/main/java`, `src/main/resources`, and `out`.
+Their builds copy resources into the classpath and remove obsolete outputs.
 
 New projects also include a Nix flake and a GitHub Actions workflow by default.
 Pass `--no-flake` when you do not want the Nix files.
+Before running generated Nix checks, follow the project README to run `nix run .#lock-deps`.
+Commit the resulting dependency lock with `flake.lock`.
+The generated checks then compile Java and run tests without external network access.
 
 ## Development
 
@@ -188,8 +222,13 @@ Run the checks:
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
 cargo test --locked
+cargo test --locked --test commands -- --ignored
+cargo test --locked --test templates -- --ignored --test-threads=1
 nix flake check "path:$PWD" --no-write-lock-file
 ```
+
+The template integration tests download Maven and Gradle dependencies.
+The CI and release workflows run these tests before publication.
 
 `Cargo.toml` is the source of truth for the package version. Releases are built
 from `master` for Linux and Windows.
