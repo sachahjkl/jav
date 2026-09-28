@@ -23,7 +23,7 @@ fn project_command_in(kind: ProjectKind, root: &std::path::Path) -> anyhow::Resu
             if directory == root {
                 return Ok(format!(".{}{wrapper}", std::path::MAIN_SEPARATOR));
             }
-            let path = directory.canonicalize()?.join(wrapper);
+            let path = dunce::canonicalize(directory)?.join(wrapper);
             return path
                 .into_os_string()
                 .into_string()
@@ -81,13 +81,10 @@ mod tests {
             let module = root.child("module");
             module.create_dir_all().unwrap();
             assert_eq!(
-                project_command_in(kind, module.path()).unwrap(),
-                root.path()
+                std::path::Path::new(&project_command_in(kind, module.path()).unwrap())
                     .canonicalize()
-                    .unwrap()
-                    .join(name)
-                    .to_str()
-                    .unwrap()
+                    .unwrap(),
+                root.path().canonicalize().unwrap().join(name)
             );
             module.child(name).touch().unwrap();
             assert_eq!(

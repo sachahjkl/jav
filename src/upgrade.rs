@@ -281,7 +281,7 @@ pub fn replace_executable(current: &Path, replacement: NamedTempFile) -> Result<
             .spawn()
             .context("failed to launch Windows replacement script")?;
         replacement.keep()?;
-        directory.keep();
+        let _ = directory.keep();
         return Ok(());
     }
 

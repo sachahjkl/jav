@@ -9,10 +9,18 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 output_path="$repo_root/$OUTPUT"
 VERSION="${VERSION:-$(perl -nle 'print $1 if /^version = "([^"]+)"$/' "$repo_root/Cargo.toml")}"
 
-cargo build --release --locked
+package="$(nix build "$repo_root#release-linux-x64" --no-write-lock-file --no-link --print-out-paths)"
 
 mkdir -p "$output_path"
-install -m755 "$repo_root/target/release/jav" "$output_path/jav"
+install -m755 "$package/bin/jav" "$output_path/jav"
+
+headers="$(readelf --program-headers "$output_path/jav")"
+dynamic="$(readelf --dynamic "$output_path/jav")"
+if [[ "$headers" == *INTERP* || "$dynamic" == *NEEDED* ]]; then
+  echo "Linux releases must be statically linked." >&2
+  exit 1
+fi
+"$output_path/jav" --version
 
 hash="$(sha256sum "$output_path/jav" | awk '{print $1}')"
 url=""

@@ -71,8 +71,8 @@
           name = "jav-publish-linux-x64";
           runtimeInputs = with pkgs; [
             bash
-            cargo
-            rustc
+            binutils
+            nix
             coreutils
             gawk
             perl
@@ -96,16 +96,19 @@
           '';
         };
 
-        package = pkgs.rustPlatform.buildRustPackage {
-          pname = "jav";
-          inherit version src;
-          cargoLock.lockFile = ./Cargo.lock;
-          __darwinAllowLocalNetworking = true;
-          nativeCheckInputs = [pkgs.jdk21_headless pkgs.gradle];
-          postCheck = ''
-            cargo test --release --locked --offline --target ${pkgs.stdenv.hostPlatform.rust.rustcTarget} --test commands -- --ignored
-          '';
-        };
+        mkPackage = buildPkgs:
+          buildPkgs.rustPlatform.buildRustPackage {
+            pname = "jav";
+            inherit version src;
+            cargoLock.lockFile = ./Cargo.lock;
+            __darwinAllowLocalNetworking = true;
+            nativeCheckInputs = [pkgs.jdk21_headless pkgs.gradle];
+            postCheck = ''
+              cargo test --release --locked --offline --target ${buildPkgs.stdenv.hostPlatform.rust.rustcTarget} --test commands -- --ignored
+            '';
+          };
+        package = mkPackage pkgs;
+        releasePackage = mkPackage pkgs.pkgsStatic;
 
         clippyCheck = pkgs.rustPlatform.buildRustPackage {
           pname = "jav-clippy";
@@ -172,15 +175,25 @@
           };
         };
       in {
-        packages.default = package;
+        packages =
+          {
+            default = package;
+          }
+          // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+            release-linux-x64 = releasePackage;
+          };
 
-        checks = {
-          build = package;
-          native-java = package;
-          clippy = clippyCheck;
-          format = formatCheck;
-          pre-commit = preCommitCheck;
-        };
+        checks =
+          {
+            build = package;
+            native-java = package;
+            clippy = clippyCheck;
+            format = formatCheck;
+            pre-commit = preCommitCheck;
+          }
+          // pkgs.lib.optionalAttrs (system == "x86_64-linux") {
+            release-linux-x64 = releasePackage;
+          };
 
         apps = {
           build = {
@@ -215,6 +228,7 @@
             preCommitCheck.enabledPackages
             ++ (with pkgs; [
               bash
+              binutils
               cargo
               cargo-nextest
               clippy

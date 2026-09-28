@@ -8,9 +8,7 @@ pub fn detect_current() -> Result<ProjectKind> {
 }
 
 pub fn find_root(path: impl AsRef<Path>) -> Result<PathBuf> {
-    let path = path
-        .as_ref()
-        .canonicalize()
+    let path = dunce::canonicalize(path.as_ref())
         .with_context(|| format!("cannot resolve {}", path.as_ref().display()))?;
     let start = if path.is_file() {
         path.parent().unwrap_or(&path)
@@ -59,7 +57,10 @@ mod tests {
         temp.child("module/build.gradle").touch().unwrap();
         temp.child("module/src/main/java").create_dir_all().unwrap();
         assert_eq!(
-            find_root(temp.child("module/src/main/java").path()).unwrap(),
+            find_root(temp.child("module/src/main/java").path())
+                .unwrap()
+                .canonicalize()
+                .unwrap(),
             temp.child("module").path().canonicalize().unwrap()
         );
         assert!(detect(temp.child("module/src").path()).is_err());

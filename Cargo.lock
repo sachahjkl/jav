@@ -1029,6 +1029,7 @@ dependencies = [
  "console",
  "ctrlc",
  "dialoguer",
+ "dunce",
  "flate2",
  "libc",
  "predicates",

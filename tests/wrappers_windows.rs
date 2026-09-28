@@ -33,6 +33,40 @@ fn native_windows_wrappers_preserve_exit_codes() {
 }
 
 #[test]
+fn native_windows_parent_wrappers_run_from_module_paths_with_spaces() {
+    for gradle in [false, true] {
+        let project = assert_fs::TempDir::new().unwrap();
+        wrapper(
+            &project,
+            gradle,
+            "echo module-wrapper > selected\r\nexit /b 23",
+        );
+        let module = project.child("module with spaces");
+        module
+            .child(if gradle {
+                "build.gradle.kts"
+            } else {
+                "pom.xml"
+            })
+            .touch()
+            .unwrap();
+        Command::cargo_bin("jav")
+            .unwrap()
+            .arg("-C")
+            .arg(module.path())
+            .arg("build")
+            .assert()
+            .code(23);
+        assert_eq!(
+            std::fs::read_to_string(module.child("selected").path())
+                .unwrap()
+                .trim(),
+            "module-wrapper"
+        );
+    }
+}
+
+#[test]
 fn native_windows_wrappers_preserve_argument_boundaries() {
     for gradle in [false, true] {
         let project = assert_fs::TempDir::new().unwrap();

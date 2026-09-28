@@ -105,6 +105,12 @@ jobs:
       - name: Build win-x64
         run: cargo build --release --locked --target x86_64-pc-windows-gnu
 
+      - name: Check Windows release executable
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:SystemRoot\System32"
+          & ./target/x86_64-pc-windows-gnu/release/jav.exe --version
+
       - name: Package win-x64
         shell: pwsh
         run: |
