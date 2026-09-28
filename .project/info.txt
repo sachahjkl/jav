@@ -1,0 +1,2 @@
+name=jav
+description=A modern CLI for Java projects
